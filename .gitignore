@@ -8,7 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
-.vscode
 
-plots/
-simulation_data/
+# 
+.vscode
+.ruff_cache/
+
+# Artifact directories (generated data and plots)
+artifacts/

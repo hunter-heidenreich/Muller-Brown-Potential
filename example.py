@@ -62,9 +62,13 @@ def main():
     fig, ax = visualizer.plot_potential_surface()
     fig.savefig(save_path.parent / "potential_surface.png", dpi=300, bbox_inches="tight")
     
-    # Plot trajectory
-    fig, axes = visualizer.plot_trajectory_on_potential(results, sample_idx=0)
-    fig.savefig(save_path.parent / "trajectory.png", dpi=300, bbox_inches="tight")
+    # Plot trajectory on potential surface
+    fig, ax = visualizer.plot_trajectory_on_potential(results, sample_idx=0)
+    fig.savefig(save_path.parent / "trajectory_on_potential.png", dpi=300, bbox_inches="tight")
+    
+    # Plot position time series
+    fig, axes = visualizer.plot_position_time_series(results, sample_idx=0)
+    fig.savefig(save_path.parent / "position_time_series.png", dpi=300, bbox_inches="tight")
     
     print(f"Plots saved to: {save_path.parent}")
     print("\nExample completed successfully!")

@@ -150,7 +150,7 @@ def _save_plot(fig, output_dir: Path, filename: str, dpi: int = 300):
     plt.close(fig)
 
 
-def create_visualizations(results: dict, output_dir: str | Path = "plots"):
+def create_visualizations(results: dict, output_dir: str | Path = "plots", save_animation: bool = False):
     """Create and save all visualizations for simulation results."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -204,10 +204,53 @@ def create_visualizations(results: dict, output_dir: str | Path = "plots"):
     # Trajectory on potential surface
     if "positions" in results:
         try:
-            fig, axes = visualizer.plot_trajectory_on_potential(results, sample_idx=0)
+            fig, ax = visualizer.plot_trajectory_on_potential(results, sample_idx=0)
             _save_plot(fig, output_path, "0_trajectory_on_potential.png")
         except ValueError as e:
             print(f"Skipping trajectory plot: {e}")
+
+    # Position time series
+    if "positions" in results:
+        try:
+            fig, axes = visualizer.plot_position_time_series(results, sample_idx=0)
+            _save_plot(fig, output_path, "0_position_time_series.png")
+        except ValueError as e:
+            print(f"Skipping position time series: {e}")
+
+    # Animated trajectory
+    if "positions" in results and save_animation:
+        try:
+            print("Creating animated trajectory...")
+            # Animation settings - modify these as needed:
+            fps = 60 
+            desired_duration = 60  # seconds
+            max_frames = desired_duration * fps  # 10800
+            frame_skip = max(1, len(results["positions"]) // max_frames)
+            
+            # Account for the save_every parameter in actual frame calculations
+            total_sim_steps = results.get("n_steps", len(results["positions"]) * results.get("save_every", 1))
+            save_every = results.get("save_every", 1)
+            saved_frames = len(results["positions"])
+            actual_frames = saved_frames // frame_skip
+            duration = actual_frames / fps
+            
+            print(f"Simulation info: {total_sim_steps:,} total steps, save_every={save_every}")
+            print(f"Data available: {saved_frames:,} saved frames")
+            print(f"Animation settings: frame_skip={frame_skip}, will create {actual_frames:,} animation frames")
+            print(f"Expected video duration: {duration:.1f} seconds ({duration/60:.1f} minutes)")
+            
+            animation_path = visualizer.create_animated_trajectory(
+                results, 
+                sample_idx=0,
+                output_path=output_path / "0_trajectory_animation.mp4",
+                frames_per_second=fps,
+                trail_length=150,
+                frame_skip=frame_skip
+            )
+            print(f"Animation saved: {animation_path}")
+        except Exception as e:
+            print(f"Skipping trajectory animation: {e}")
+            print("Note: Animation requires matplotlib.animation and may need ffmpeg for MP4 or pillow for GIF")
 
     # Velocity time series
     if "velocities" in results:
@@ -244,7 +287,7 @@ def create_visualizations(results: dict, output_dir: str | Path = "plots"):
     print(f"All available plots saved to {output_path}")
 
 
-def create_batch_visualizations(all_results: list, output_dir: str | Path = "plots"):
+def create_batch_visualizations(all_results: list, output_dir: str | Path = "plots", save_animation: bool = False):
     """Create and save visualizations for batch simulation results."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -302,10 +345,53 @@ def create_batch_visualizations(all_results: list, output_dir: str | Path = "plo
     # Time-dependent plots from first simulation
     if "positions" in first_result:
         try:
-            fig, axes = visualizer.plot_trajectory_on_potential(first_result, sample_idx=0)
+            fig, ax = visualizer.plot_trajectory_on_potential(first_result, sample_idx=0)
             _save_plot(fig, output_path, "0_trajectory_on_potential.png")
         except ValueError as e:
             print(f"Skipping trajectory plot: {e}")
+
+    # Position time series from first simulation
+    if "positions" in first_result:
+        try:
+            fig, axes = visualizer.plot_position_time_series(first_result, sample_idx=0)
+            _save_plot(fig, output_path, "0_position_time_series.png")
+        except ValueError as e:
+            print(f"Skipping position time series: {e}")
+
+    # Animated trajectory from first simulation
+    if "positions" in first_result and save_animation:
+        try:
+            print("Creating animated trajectory from first simulation...")
+            # Animation settings - modify these as needed:
+            fps = 60
+            desired_duration = 90  # seconds - set to 90 for a 90-second video
+            max_frames = desired_duration * fps  # 5400 frames for 90 seconds at 60fps
+            frame_skip = max(1, len(first_result["positions"]) // max_frames)
+            
+            # Account for the save_every parameter in actual frame calculations
+            total_sim_steps = first_result.get("n_steps", len(first_result["positions"]) * first_result.get("save_every", 1))
+            save_every = first_result.get("save_every", 1)
+            saved_frames = len(first_result["positions"])
+            actual_frames = saved_frames // frame_skip
+            duration = actual_frames / fps
+            
+            print(f"Simulation info: {total_sim_steps:,} total steps, save_every={save_every}")
+            print(f"Data available: {saved_frames:,} saved frames")
+            print(f"Animation settings: frame_skip={frame_skip}, will create {actual_frames:,} animation frames")
+            print(f"Expected video duration: {duration:.1f} seconds ({duration/60:.1f} minutes)")
+            
+            animation_path = visualizer.create_animated_trajectory(
+                first_result, 
+                sample_idx=0,
+                output_path=output_path / "0_trajectory_animation.mp4",
+                frames_per_second=fps,
+                trail_length=150,
+                frame_skip=frame_skip
+            )
+            print(f"Animation saved: {animation_path}")
+        except Exception as e:
+            print(f"Skipping trajectory animation: {e}")
+            print("Note: Animation requires matplotlib.animation and may need ffmpeg for MP4 or pillow for GIF")
 
     if "velocities" in first_result:
         try:
@@ -478,7 +564,7 @@ def run_plotting_mode(artifact_dir: str | Path):
         results["statistics"] = calculate_trajectory_statistics(full_results)
 
     print("Regenerating plots...")
-    create_visualizations(results, output_dir=artifact_path)
+    create_visualizations(results, output_dir=artifact_path, save_animation=False)  # Don't create animations by default in plot mode
     print(f"Plots saved to: {artifact_path}")
 
 
@@ -510,7 +596,7 @@ def main():
         "--n-particles", type=int, default=1, help="Number of particles"
     )
     parser.add_argument(
-        "--n-steps", type=int, default=600_000, help="Number of simulation steps"
+        "--n-steps", type=int, default=1_000_000, help="Number of simulation steps"
     )
     parser.add_argument(
         "--temperature", type=float, default=15.0, help="Temperature for thermostat"
@@ -524,7 +610,7 @@ def main():
     parser.add_argument(
         "--n-transient",
         type=int,
-        default=100_000,
+        default=0,
         help="Number of beginning steps to discard as transient (rounded down to nearest save_every interval)",
     )
     parser.add_argument(
@@ -533,11 +619,14 @@ def main():
     parser.add_argument(
         "--save-every",
         type=int,
-        default=10,
+        default=100,
         help="Save data every N simulation steps (sampling rate)",
     )
     parser.add_argument(
         "--save-plots", action="store_true", help="Save visualization plots"
+    )
+    parser.add_argument(
+        "--save-animation", action="store_true", help="Save animated trajectory visualization (MP4/GIF)"
     )
     parser.add_argument(
         "--observables",
@@ -580,7 +669,7 @@ def main():
         )
 
         if args.save_plots:
-            create_visualizations(results, output_dir=artifact_path.parent)
+            create_visualizations(results, output_dir=artifact_path.parent, save_animation=args.save_animation)
 
         print(f"Results saved to artifact directory: {artifact_path.parent}")
 
@@ -612,7 +701,7 @@ def main():
         if args.save_plots:
             # For batch mode, create visualizations in the same artifact directory
             print("Creating visualizations from batch results...")
-            create_batch_visualizations(all_results, output_dir=batch_artifact_dir)
+            create_batch_visualizations(all_results, output_dir=batch_artifact_dir, save_animation=args.save_animation)
             print(f"Batch visualizations saved to: {batch_artifact_dir}")
 
 

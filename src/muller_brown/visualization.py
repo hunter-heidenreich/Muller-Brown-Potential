@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from pathlib import Path
 
 from src.muller_brown.potential import MuellerBrownPotential
 from src.muller_brown.data import convert_to_tensor
@@ -59,9 +60,9 @@ class MuellerBrownVisualizer:
         V_log = self._apply_log_transform(V)
 
         # Create plot
-        fig, ax = self._setup_figure_and_axes(ax, (8, 6))
+        fig, ax = self._setup_figure_and_axes(ax, (10, 8))
 
-        # Plot contours
+        # Plot contours with improved styling
         v_min, v_max = V_log.min(), V_log.max()
         contour_levels = np.linspace(v_min, v_max, levels)
 
@@ -69,18 +70,30 @@ class MuellerBrownVisualizer:
             X, Y, V_log, levels=contour_levels, cmap=cmap, extend="both"
         )
 
-        # Add colorbar
-        cbar = fig.colorbar(contour, ax=ax)
-        cbar.set_label(r"$\log(V - V_{\min})$", rotation=0, labelpad=20)
+        # Add contour lines for better definition
+        ax.contour(
+            X, Y, V_log, levels=contour_levels[::3], colors='black', alpha=0.3, linewidths=0.5
+        )
+
+        # Add colorbar with improved styling
+        cbar = fig.colorbar(contour, ax=ax, shrink=0.8, aspect=30)
+        cbar.set_label(r"$\log(V - V_{\min})$", rotation=270, labelpad=20, fontsize=12)
+        cbar.ax.tick_params(labelsize=10)
 
         # Add critical points
         self._add_critical_points(ax)
 
-        # Labels and title
-        ax.set_xlabel(r"$x$", fontsize=12)
-        ax.set_ylabel(r"$y$", fontsize=12)
-        ax.set_title("Müller-Brown Potential Energy Surface", fontsize=14)
-        ax.grid(True, alpha=0.3)
+        # Labels and title with improved styling
+        ax.set_xlabel(r"$x$", fontsize=14, fontweight='bold')
+        ax.set_ylabel(r"$y$", fontsize=14, fontweight='bold')
+        ax.set_title("Müller-Brown Potential Energy Surface", fontsize=16, fontweight='bold', pad=20)
+        
+        # Improve grid and axis styling
+        ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
+        ax.tick_params(labelsize=11)
+        
+        # Set aspect ratio to be equal for better visualization
+        ax.set_aspect('equal', adjustable='box')
 
         return fig, ax
 
@@ -630,8 +643,48 @@ class MuellerBrownVisualizer:
 
     def plot_trajectory_on_potential(
         self, data: dict, sample_idx: int = 0
+    ) -> tuple[Figure, Axes]:
+        """Plot single trajectory on potential surface.
+        
+        Raises:
+            ValueError: If positions data is not available
+        """
+        if "positions" not in data:
+            raise ValueError("Position data not available - was 'positions' included in saved observables?")
+            
+        positions = data["positions"][:, sample_idx, :]  # (n_steps, 2)
+
+        # Create a single plot for trajectory on potential surface
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # Plot trajectory on potential surface
+        _, _ = self.plot_potential_surface(ax=ax)
+        ax.plot(positions[:, 0], positions[:, 1], "white", linewidth=2.5, alpha=0.9, label="Trajectory")
+        ax.plot(
+            positions[0, 0], positions[0, 1], "ro", markersize=10, label="Start", zorder=12
+        )
+        ax.plot(
+            positions[-1, 0], positions[-1, 1], "rs", markersize=10, label="End", zorder=12
+        )
+        
+        # Improve legend styling
+        ax.legend(
+            loc="upper right",
+            frameon=True,
+            fancybox=True,
+            shadow=True,
+            framealpha=0.9,
+            fontsize=10
+        )
+        ax.set_title(f"Trajectory on Potential Surface (Particle {sample_idx})", fontsize=14, fontweight='bold')
+
+        plt.tight_layout()
+        return fig, ax
+
+    def plot_position_time_series(
+        self, data: dict, sample_idx: int = 0
     ) -> tuple[Figure, np.ndarray]:
-        """Plot single trajectory on potential surface with time series for x and y.
+        """Plot x and y position time series separately.
         
         Raises:
             ValueError: If positions data is not available
@@ -641,38 +694,184 @@ class MuellerBrownVisualizer:
             
         positions = data["positions"][:, sample_idx, :]  # (n_steps, 2)
         dt = data["dt"]
-        time_points = np.arange(len(positions)) * dt
+        save_every = data.get("save_every", 1)
+        n_transient_removed = data.get("n_transient_removed", 0)
+        
+        # Calculate time points accounting for transient removal
+        time_offset = n_transient_removed * save_every * dt
+        time_points = time_offset + np.arange(len(positions)) * save_every * dt
 
-        fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-
-        # Plot trajectory on potential surface
-        _, _ = self.plot_potential_surface(ax=axes[0])
-        axes[0].plot(positions[:, 0], positions[:, 1], "white", linewidth=2, alpha=0.8)
-        axes[0].plot(
-            positions[0, 0], positions[0, 1], "ro", markersize=8, label="Start"
-        )
-        axes[0].plot(
-            positions[-1, 0], positions[-1, 1], "rs", markersize=8, label="End"
-        )
-        axes[0].legend()
-        axes[0].set_title("Trajectory on Potential Surface")
+        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
         # X position vs time
-        axes[1].plot(time_points, positions[:, 0], "b-", linewidth=1)
-        axes[1].set_xlabel("Time")
-        axes[1].set_ylabel("x position")
-        axes[1].set_title("X Position vs Time")
-        axes[1].grid(True, alpha=0.3)
+        axes[0].plot(time_points, positions[:, 0], "b-", linewidth=1.5)
+        axes[0].set_xlabel("Time", fontsize=12)
+        axes[0].set_ylabel("x position", fontsize=12)
+        axes[0].set_title(f"X Position vs Time (Particle {sample_idx})", fontsize=13, fontweight='bold')
+        axes[0].grid(True, alpha=0.3)
+        axes[0].tick_params(labelsize=10)
 
         # Y position vs time
-        axes[2].plot(time_points, positions[:, 1], "r-", linewidth=1)
-        axes[2].set_xlabel("Time")
-        axes[2].set_ylabel("y position")
-        axes[2].set_title("Y Position vs Time")
-        axes[2].grid(True, alpha=0.3)
+        axes[1].plot(time_points, positions[:, 1], "r-", linewidth=1.5)
+        axes[1].set_xlabel("Time", fontsize=12)
+        axes[1].set_ylabel("y position", fontsize=12)
+        axes[1].set_title(f"Y Position vs Time (Particle {sample_idx})", fontsize=13, fontweight='bold')
+        axes[1].grid(True, alpha=0.3)
+        axes[1].tick_params(labelsize=10)
 
         plt.tight_layout()
         return fig, axes
+
+    def create_animated_trajectory(
+        self, 
+        data: dict, 
+        sample_idx: int = 0,
+        output_path: str | Path | None = None,
+        frames_per_second: int = 30,
+        trail_length: int = 100,
+        frame_skip: int = 1,
+        show_energy: bool = True
+    ) -> str:
+        """Create an animated trajectory visualization as MP4 or GIF.
+        
+        Args:
+            data: Simulation data dictionary
+            sample_idx: Particle index to animate
+            output_path: Path to save animation. If None, saves as 'trajectory_animation.mp4'
+            frames_per_second: Animation frame rate
+            trail_length: Number of recent positions to show as a trail
+            frame_skip: Skip every N frames to reduce file size/animation length
+            show_energy: Whether to show energy information in animation
+            
+        Returns:
+            Path to saved animation file
+            
+        Raises:
+            ValueError: If positions data is not available
+            ImportError: If required animation dependencies are not available
+        """
+        try:
+            from matplotlib.animation import FuncAnimation
+        except ImportError:
+            raise ImportError("matplotlib.animation is required for trajectory animation")
+            
+        if "positions" not in data:
+            raise ValueError("Position data not available - was 'positions' included in saved observables?")
+            
+        positions = data["positions"][:, sample_idx, :]  # (n_steps, 2)
+        dt = data["dt"]
+        save_every = data.get("save_every", 1)
+        n_transient_removed = data.get("n_transient_removed", 0)
+        
+        # Apply frame skipping to reduce animation length
+        positions = positions[::frame_skip]
+        
+        # Calculate time points accounting for transient removal and frame skipping
+        time_offset = n_transient_removed * save_every * dt
+        time_points = time_offset + np.arange(len(positions)) * save_every * dt * frame_skip
+        
+        # Get potential energy if available and requested
+        energies = None
+        if show_energy and "potential_energy" in data:
+            energies = data["potential_energy"][::frame_skip, sample_idx]
+        
+        # Set up the figure and axes for HD 720p (1280x720)
+        # Calculate figsize in inches (matplotlib uses 100 DPI by default)
+        fig_width = 1280 / 100  # 12.8 inches
+        fig_height = 720 / 100  # 7.2 inches
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=100)
+        
+        # Plot the potential surface
+        self.plot_potential_surface(ax=ax)
+        
+        # Initialize trajectory line and current position marker
+        trajectory_line, = ax.plot([], [], 'white', linewidth=2, alpha=0.7, label='Trajectory')
+        current_pos, = ax.plot([], [], 'ro', markersize=10, label='Current Position')
+        start_pos, = ax.plot([], [], 'go', markersize=8, label='Start')
+        
+        # Add title and legend
+        title = ax.set_title(f'Trajectory Animation (Particle {sample_idx})')
+        ax.legend(loc='upper right')
+        
+        # Text annotations for time and energy
+        time_text = ax.text(0.02, 0.98, '', transform=ax.transAxes, 
+                           verticalalignment='top', fontsize=12,
+                           bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        energy_text = None
+        if energies is not None:
+            energy_text = ax.text(0.02, 0.90, '', transform=ax.transAxes,
+                                 verticalalignment='top', fontsize=12,
+                                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        def animate(frame):
+            """Animation function for each frame."""
+            # Current position
+            current_pos.set_data([positions[frame, 0]], [positions[frame, 1]])
+            
+            # Show start position
+            if frame == 0:
+                start_pos.set_data([positions[0, 0]], [positions[0, 1]])
+            
+            # Show trail (recent trajectory)
+            trail_start = max(0, frame - trail_length)
+            trail_x = positions[trail_start:frame+1, 0]
+            trail_y = positions[trail_start:frame+1, 1]
+            trajectory_line.set_data(trail_x, trail_y)
+            
+            # Update time
+            time_text.set_text(f'Time: {time_points[frame]:.3f}')
+            
+            # Update energy if available
+            if energy_text is not None and energies is not None:
+                energy_text.set_text(f'Energy: {energies[frame]:.3f}')
+            
+            # Update title with progress
+            progress = (frame + 1) / len(positions) * 100
+            title.set_text(f'Trajectory Animation (Particle {sample_idx}) - {progress:.1f}%')
+            
+            return trajectory_line, current_pos, start_pos, time_text, title
+        
+        # Create animation
+        anim = FuncAnimation(
+            fig, animate, frames=len(positions), 
+            interval=1000/frames_per_second, blit=False, repeat=True
+        )
+        
+        # Save animation
+        if output_path is None:
+            output_path = "trajectory_animation.mp4"
+        
+        output_path = Path(output_path)
+        
+        # Determine format from extension
+        if output_path.suffix.lower() == '.gif':
+            print(f"Saving animation as GIF: {output_path}")
+            anim.save(output_path, writer='pillow', fps=frames_per_second)
+        else:
+            # Default to MP4 with high quality settings for HD
+            if not output_path.suffix:
+                output_path = output_path.with_suffix('.mp4')
+            print(f"Saving animation as HD MP4 (1280x720): {output_path}")
+            try:
+                # High quality settings for HD video
+                anim.save(output_path, writer='ffmpeg', fps=frames_per_second, 
+                         bitrate=5000, extra_args=['-vcodec', 'libx264', '-pix_fmt', 'yuv420p'])
+            except Exception as e:
+                # Fallback to basic writer if ffmpeg is not available
+                print(f"FFmpeg not available ({e}), trying alternative writer...")
+                try:
+                    anim.save(output_path, fps=frames_per_second, dpi=100)
+                except Exception as e2:
+                    print(f"Animation save failed: {e2}")
+                    # Try saving as GIF instead
+                    gif_path = output_path.with_suffix('.gif')
+                    print(f"Falling back to GIF format: {gif_path}")
+                    anim.save(gif_path, writer='pillow', fps=frames_per_second)
+                    output_path = gif_path
+        
+        plt.close(fig)
+        return str(output_path)
 
     def plot_velocity_time_series(
         self, data: dict, sample_idx: int = 0
@@ -687,7 +886,12 @@ class MuellerBrownVisualizer:
             
         velocities = data["velocities"][:, sample_idx, :]  # (n_steps, 2)
         dt = data["dt"]
-        time_points = np.arange(len(velocities)) * dt
+        save_every = data.get("save_every", 1)
+        n_transient_removed = data.get("n_transient_removed", 0)
+        
+        # Calculate time points accounting for transient removal
+        time_offset = n_transient_removed * save_every * dt
+        time_points = time_offset + np.arange(len(velocities)) * save_every * dt
         velocity_magnitude = np.linalg.norm(velocities, axis=1)
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
@@ -729,7 +933,12 @@ class MuellerBrownVisualizer:
             
         forces = data["forces"][:, sample_idx, :]  # (n_steps, 2)
         dt = data["dt"]
-        time_points = np.arange(len(forces)) * dt
+        save_every = data.get("save_every", 1)
+        n_transient_removed = data.get("n_transient_removed", 0)
+        
+        # Calculate time points accounting for transient removal
+        time_offset = n_transient_removed * save_every * dt
+        time_points = time_offset + np.arange(len(forces)) * save_every * dt
         force_magnitude = np.linalg.norm(forces, axis=1)
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
@@ -769,7 +978,12 @@ class MuellerBrownVisualizer:
             
         positions = data["positions"][:, sample_idx, :]  # (n_steps, 2)
         dt = data["dt"]
-        time_points = np.arange(len(positions)) * dt
+        save_every = data.get("save_every", 1)
+        n_transient_removed = data.get("n_transient_removed", 0)
+        
+        # Calculate time points accounting for transient removal
+        time_offset = n_transient_removed * save_every * dt
+        time_points = time_offset + np.arange(len(positions)) * save_every * dt
 
         # Calculate MSD from initial position
         initial_pos = positions[0]
@@ -798,7 +1012,12 @@ class MuellerBrownVisualizer:
             
         energies = data["potential_energy"][:, sample_idx]  # (n_steps,)
         dt = data["dt"]
-        time_points = np.arange(len(energies)) * dt
+        save_every = data.get("save_every", 1)
+        n_transient_removed = data.get("n_transient_removed", 0)
+        
+        # Calculate time points accounting for transient removal
+        time_offset = n_transient_removed * save_every * dt
+        time_points = time_offset + np.arange(len(energies)) * save_every * dt
 
         fig, ax = plt.subplots(figsize=(8, 4))
 
@@ -843,48 +1062,90 @@ class MuellerBrownVisualizer:
         return fig, ax
 
     def _add_critical_points(self, ax: Axes) -> None:
-        """Add minima and saddle points to the plot."""
-        # Plot minima
+        """Add minima and saddle points to the plot with clear annotations."""
+        # Plot minima with consistent styling
         minima = self.potential.get_minima()
         for i, (x, y) in enumerate(minima):
             ax.plot(
                 x,
                 y,
-                "ko",
-                markersize=8,
+                "o",
+                color="black",
+                markersize=10,
                 markerfacecolor="white",
-                markeredgewidth=2,
-                label=f"Minimum {chr(65 + i)}" if i == 0 else None,
+                markeredgewidth=2.5,
+                label="Minima" if i == 0 else "",
+                zorder=10,
             )
+            # Add text labels with better positioning and styling
             ax.annotate(
                 f"M{chr(65 + i)}",
                 (x, y),
-                xytext=(5, 5),
+                xytext=(8, 8),
                 textcoords="offset points",
                 fontweight="bold",
+                fontsize=11,
+                color="black",
+                bbox=dict(
+                    boxstyle="round,pad=0.3",
+                    facecolor="white",
+                    edgecolor="black",
+                    alpha=0.9
+                ),
+                zorder=11,
             )
 
-        # Plot saddle points
+        # Plot saddle points with distinct styling
         saddles = self.potential.get_saddle_points()
         for i, (x, y) in enumerate(saddles):
             ax.plot(
                 x,
                 y,
-                "kX",
-                markersize=10,
+                "X",
+                color="black",
+                markersize=12,
                 markerfacecolor="white",
-                markeredgewidth=2,
-                label="Saddle Point" if i == 0 else None,
+                markeredgewidth=2.5,
+                label="Saddle Points" if i == 0 else "",
+                zorder=10,
             )
+            # Add text labels with better positioning and styling
             ax.annotate(
                 f"S{i + 1}",
                 (x, y),
-                xytext=(5, 5),
+                xytext=(8, 8),
                 textcoords="offset points",
                 fontweight="bold",
+                fontsize=11,
+                color="black",
+                bbox=dict(
+                    boxstyle="round,pad=0.3",
+                    facecolor="white",
+                    edgecolor="black",
+                    alpha=0.9
+                ),
+                zorder=11,
             )
 
-        # Add legend for critical points only
+        # Add a clean legend for critical points
         handles, labels = ax.get_legend_handles_labels()
-        if handles:
-            ax.legend(handles[:2], labels[:2], loc="upper right")
+        critical_handles = []
+        critical_labels = []
+        
+        # Find the handles for minima and saddle points
+        for handle, label in zip(handles, labels):
+            if label in ["Minima", "Saddle Points"]:
+                critical_handles.append(handle)
+                critical_labels.append(label)
+        
+        if critical_handles:
+            ax.legend(
+                critical_handles, 
+                critical_labels, 
+                loc="upper right",
+                frameon=True,
+                fancybox=True,
+                shadow=True,
+                framealpha=0.9,
+                fontsize=10
+            )

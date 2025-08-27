@@ -73,9 +73,14 @@ class MuellerBrownPotential(nn.Module):
     """
 
     def __init__(
-        self, device: str | torch.device = "cpu", dtype: torch.dtype = torch.float64
+        self, 
+        device: str | torch.device = "cpu", 
+        dtype: torch.dtype = torch.float64,
+        use_autograd: bool = False
     ):
         super().__init__()
+        
+        self.use_autograd = use_autograd
 
         self.register_buffer(
             "A",
@@ -116,15 +121,23 @@ class MuellerBrownPotential(nn.Module):
 
     def force(self, coordinates: Tensor) -> Tensor:
         """Compute forces (negative gradient) at given coordinates."""
-        return _calculate_force(
-            coordinates,
-            self.A,
-            self.a,
-            self.b,
-            self.c,
-            self.x_centers,
-            self.y_centers,
-        )
+        if self.use_autograd:
+            coordinates = coordinates.requires_grad_(True)
+            potential = self.forward(coordinates)
+            grad = torch.autograd.grad(
+                potential.sum(), coordinates, create_graph=True
+            )[0]
+            return -grad
+        else:
+            return _calculate_force(
+                coordinates,
+                self.A,
+                self.a,
+                self.b,
+                self.c,
+                self.x_centers,
+                self.y_centers,
+            )
 
     def get_minima(self) -> list[tuple[float, float]]:
         """Return the approximate locations of the three minima."""

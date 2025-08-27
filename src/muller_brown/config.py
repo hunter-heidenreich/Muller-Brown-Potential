@@ -10,7 +10,7 @@ from src.muller_brown.constants import (
 from src.muller_brown.io import _validate_positive_integer
 
 # Default observables to save and plot
-DEFAULT_OBSERVABLES = ["positions", "velocities", "forces", "potential_energy"]
+DEFAULT_OBSERVABLES = ["positions"]
 AVAILABLE_OBSERVABLES = ["positions", "velocities", "forces", "potential_energy"]
 
 

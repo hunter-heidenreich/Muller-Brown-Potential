@@ -60,42 +60,5 @@ def calculate_trajectory_statistics(data: dict) -> dict:
             "energy_max": energies_flat.max(),
         })
 
-    displacement_per_particle = np.linalg.norm(positions[-1] - positions[0], axis=1)
-    valid_displacements = displacement_per_particle[~np.isnan(displacement_per_particle)]
-    
-    stats["total_displacement"] = displacement_per_particle
-    stats["mean_displacement"] = valid_displacements.mean() if len(valid_displacements) > 0 else np.nan
-
-    if n_steps > 1:
-        msd_per_particle = np.sum((positions - positions[0]) ** 2, axis=2)
-        valid_msd_final = msd_per_particle[-1][~np.isnan(msd_per_particle[-1])]
-        stats["msd_final"] = msd_per_particle[-1]
-        stats["msd_mean_final"] = valid_msd_final.mean() if len(valid_msd_final) > 0 else np.nan
-        stats["msd_time_series"] = np.nanmean(msd_per_particle, axis=1)
-
     return stats
 
-
-def compute_batch_statistics(all_results: list) -> dict:
-    """Compute summary statistics across multiple simulation results."""
-    if not all_results:
-        return {}
-
-    displacements = [r["statistics"]["mean_displacement"] for r in all_results]
-    n_steps_list = [r["statistics"]["n_steps"] for r in all_results]
-    n_particles_list = [r["statistics"]["n_particles"] for r in all_results]
-
-    return {
-        "n_simulations": len(all_results),
-        "mean_displacement_stats": {
-            "mean": np.mean(displacements),
-            "std": np.std(displacements),
-            "min": np.min(displacements),
-            "max": np.max(displacements),
-        },
-        "trajectory_length_stats": {
-            "mean_n_steps": np.mean(n_steps_list),
-            "mean_n_particles": np.mean(n_particles_list),
-        },
-        "all_displacements": displacements,
-    }

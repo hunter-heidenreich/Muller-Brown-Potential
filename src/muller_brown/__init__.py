@@ -1,6 +1,5 @@
 """Modern PyTorch implementation of the Müller-Brown potential."""
 
-from .analysis import calculate_trajectory_statistics, compute_batch_statistics
 from .config import generate_initial_positions, create_experiment_config, validate_observables, DEFAULT_OBSERVABLES, AVAILABLE_OBSERVABLES
 from .data import set_random_seed, apply_transient_removal, combine_batch_trajectories
 from .io import (
@@ -21,7 +20,6 @@ __all__ = [
     "LangevinSimulator",
     "MuellerBrownVisualizer",
     "calculate_trajectory_statistics",
-    "compute_batch_statistics",
     "generate_initial_positions",
     "create_experiment_config",
     "validate_observables",

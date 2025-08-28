@@ -122,37 +122,26 @@ class MuellerBrownVisualizer:
         else:
             # All particles mode - flatten across particles and time steps
             positions = positions_raw.reshape(-1, 2)  # (n_steps * n_particles, 2)
-            n_particles = positions_raw.shape[1]
-            title_suffix = f" (All {n_particles} particles)"
+            title_suffix = ""
 
-        # Create 2x4 subplot grid
-        fig = plt.figure(figsize=(16, 8))
-        gs = fig.add_gridspec(2, 4, width_ratios=[1, 1, 1, 1], height_ratios=[1, 1])
-        
-        # Define subplot positions
-        ax_x_linear = fig.add_subplot(gs[0, 0])      # (1,1): Linear x density
-        ax_y_linear = fig.add_subplot(gs[0, 1])      # (1,2): Linear y density  
-        ax_x_log = fig.add_subplot(gs[1, 0])         # (2,1): Log x density
-        ax_y_log = fig.add_subplot(gs[1, 1])         # (2,2): Log y density
-        ax_2d = fig.add_subplot(gs[:, 2:])           # (1-2,3-4): 2D histogram
+        # Create 2x2 subplot grid with 2D plot spanning right column
+        fig = plt.figure(figsize=(14, 8))
+        gs = fig.add_gridspec(2, 2, width_ratios=[1, 1.5])
+        ax_x = fig.add_subplot(gs[0, 0])
+        ax_y = fig.add_subplot(gs[1, 0])
+        ax_2d = fig.add_subplot(gs[:, 1])
 
         # Filter out NaN values before creating histograms
         valid_mask = ~np.any(np.isnan(positions), axis=1)
         valid_positions = positions[valid_mask]
-        
         if len(valid_positions) == 0:
             raise ValueError("All position data contains NaN values - simulation failed")
-        
         n_invalid = len(positions) - len(valid_positions)
         if n_invalid > 0:
             print(f"Warning: Filtered out {n_invalid} data points with NaN values")
-        
-        # Calculate histograms for 1D distributions
-        x_counts, x_edges = np.histogram(valid_positions[:, 0], bins=50, density=True)
-        y_counts, y_edges = np.histogram(valid_positions[:, 1], bins=50, density=True)
-        
-        # (1,1): Linear X density
-        ax_x_linear.hist(
+
+        # X position density
+        ax_x.hist(
             valid_positions[:, 0],
             bins=50,
             density=True,
@@ -160,13 +149,13 @@ class MuellerBrownVisualizer:
             color="blue",
             edgecolor="black",
         )
-        ax_x_linear.set_xlabel("x position")
-        ax_x_linear.set_ylabel("Density")
-        ax_x_linear.set_title(f"X Position Density{title_suffix}")
-        ax_x_linear.grid(True, alpha=0.3)
+        ax_x.set_xlabel("x position")
+        ax_x.set_ylabel("Density")
+        ax_x.set_title(f"X Position Density{title_suffix}")
+        ax_x.grid(True, alpha=0.3)
 
-        # (1,2): Linear Y density
-        ax_y_linear.hist(
+        # Y position density
+        ax_y.hist(
             valid_positions[:, 1],
             bins=50,
             density=True,
@@ -174,81 +163,36 @@ class MuellerBrownVisualizer:
             color="red",
             edgecolor="black",
         )
-        ax_y_linear.set_xlabel("y position")
-        ax_y_linear.set_ylabel("Density")
-        ax_y_linear.set_title(f"Y Position Density{title_suffix}")
-        ax_y_linear.grid(True, alpha=0.3)
+        ax_y.set_xlabel("y position")
+        ax_y.set_ylabel("Density")
+        ax_y.set_title(f"Y Position Density{title_suffix}")
+        ax_y.grid(True, alpha=0.3)
 
-        # (2,1): Log X density
-        x_counts_nonzero = x_counts[x_counts > 0]  # Only plot where we have support
-        x_edges_nonzero = x_edges[:-1][x_counts > 0]  # Corresponding bin edges
-        x_counts_log = -np.log10(x_counts_nonzero)  # Negative log for energy-like representation
-        
-        ax_x_log.bar(
-            x_edges_nonzero,
-            x_counts_log,
-            width=np.diff(x_edges)[0],  # Use consistent bin width
-            alpha=0.7,
-            color="blue",
-            edgecolor="black",
-        )
-        ax_x_log.set_xlabel("x position")
-        ax_x_log.set_ylabel("-Log₁₀(Density)")
-        ax_x_log.set_title(f"X Position -Log Density{title_suffix}")
-        ax_x_log.grid(True, alpha=0.3)
-
-        # (2,2): Log Y density
-        y_counts_nonzero = y_counts[y_counts > 0]  # Only plot where we have support
-        y_edges_nonzero = y_edges[:-1][y_counts > 0]  # Corresponding bin edges
-        y_counts_log = -np.log10(y_counts_nonzero)  # Negative log for energy-like representation
-        
-        ax_y_log.bar(
-            y_edges_nonzero,
-            y_counts_log,
-            width=np.diff(y_edges)[0],  # Use consistent bin width
-            alpha=0.7,
-            color="red",
-            edgecolor="black",
-        )
-        ax_y_log.set_xlabel("y position")
-        ax_y_log.set_ylabel("-Log₁₀(Density)")
-        ax_y_log.set_title(f"Y Position -Log Density{title_suffix}")
-        ax_y_log.grid(True, alpha=0.3)
-
-        # (1-2,3-4): 2D joint distribution (negative log scale)
+        # 2D joint distribution (log10 density)
         hist, xedges, yedges = np.histogram2d(
             valid_positions[:, 0], valid_positions[:, 1], bins=50, density=True
         )
-        
-        # Create negative log version, only where we have support
-        hist_neglog = np.full_like(hist, np.nan)  # Initialize with NaN
+        # Only plot where we have support
+        hist_log = np.full_like(hist, np.nan)
         nonzero_mask = hist > 0
-        hist_neglog[nonzero_mask] = -np.log10(hist[nonzero_mask])
+        hist_log[nonzero_mask] = np.log10(hist[nonzero_mask])
 
         im = ax_2d.imshow(
-            hist_neglog.T,
+            hist_log.T,
             origin="lower",
             extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
-            cmap="viridis_r",  # Reverse colormap so low values (high density) are bright
+            cmap="viridis",
             alpha=0.8,
         )
-
-        # Add critical points to 2D plot
         self._add_critical_points(ax_2d)
-
         ax_2d.set_xlabel("x position")
         ax_2d.set_ylabel("y position")
-        ax_2d.set_title(f"2D Position Distribution{title_suffix}\n(Log Scale)")
-
-        # Add colorbar for 2D plot
+        ax_2d.set_title(f"2D Position Distribution{title_suffix}\n(Log₁₀ Density)")
         cbar = fig.colorbar(im, ax=ax_2d, shrink=0.6)
-        cbar.set_label("-Log(Density)", rotation=270, labelpad=15)
+        cbar.set_label("Log₁₀(Density)", rotation=270, labelpad=15)
 
         plt.tight_layout()
-        
-        # Return axes in a format compatible with existing code
-        axes = np.array([ax_x_linear, ax_y_linear, ax_x_log, ax_y_log, ax_2d])
-        return fig, axes
+        return fig, np.array([ax_x, ax_y, ax_2d])
 
     def plot_velocity_distributions(
         self, data: dict, sample_idx: int | None = None
@@ -775,38 +719,86 @@ class MuellerBrownVisualizer:
         if show_energy and "potential_energy" in data:
             energies = data["potential_energy"][::frame_skip, sample_idx]
         
-        # Set up the figure and axes for HD 720p (1280x720)
-        # Calculate figsize in inches (matplotlib uses 100 DPI by default)
+        # Set up the figure with 2x2 grid layout (similar to position distributions)
+        # Calculate figsize for HD 720p (1280x720) 
         fig_width = 1280 / 100  # 12.8 inches
         fig_height = 720 / 100  # 7.2 inches
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=100)
+        fig = plt.figure(figsize=(fig_width, fig_height), dpi=100)
         
-        # Plot the potential surface
-        self.plot_potential_surface(ax=ax)
+        # Create grid: time series on left (2 rows), PES on right (spanning both rows)
+        gs = fig.add_gridspec(2, 2, width_ratios=[1, 1.5], hspace=0.3, wspace=0.3)
+        ax_x_time = fig.add_subplot(gs[0, 0])
+        ax_y_time = fig.add_subplot(gs[1, 0])
+        ax_pes = fig.add_subplot(gs[:, 1])
         
-        # Initialize trajectory line and current position marker
-        trajectory_line, = ax.plot([], [], 'white', linewidth=2, alpha=0.7, label='Trajectory')
-        current_pos, = ax.plot([], [], 'ro', markersize=10, label='Current Position')
-        start_pos, = ax.plot([], [], 'go', markersize=8, label='Start')
+        # Set up the potential energy surface plot
+        self.plot_potential_surface(ax=ax_pes)
         
-        # Add title and legend
-        title = ax.set_title(f'Trajectory Animation (Particle {sample_idx})')
-        ax.legend(loc='upper right')
+        # Initialize time series plots
+        x_line, = ax_x_time.plot([], [], 'b-', linewidth=2, label='X Position')
+        y_line, = ax_y_time.plot([], [], 'r-', linewidth=2, label='Y Position')
         
-        # Text annotations for time and energy
-        time_text = ax.text(0.02, 0.98, '', transform=ax.transAxes, 
-                           verticalalignment='top', fontsize=12,
-                           bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        # Initialize trajectory on PES
+        trajectory_line, = ax_pes.plot([], [], 'white', linewidth=2.5, alpha=0.8, label='Trajectory')
+        current_pos, = ax_pes.plot([], [], 'ro', markersize=12, label='Current Position', zorder=10)
+        start_pos, = ax_pes.plot([], [], 'go', markersize=10, label='Start', zorder=10)
+        
+        # Style the time series plots
+        ax_x_time.set_xlabel('Time', fontsize=10)
+        ax_x_time.set_ylabel('X Position', fontsize=10)
+        ax_x_time.set_title('X Position vs Time', fontsize=11, fontweight='bold')
+        ax_x_time.grid(True, alpha=0.3)
+        ax_x_time.tick_params(labelsize=9)
+        
+        ax_y_time.set_xlabel('Time', fontsize=10)
+        ax_y_time.set_ylabel('Y Position', fontsize=10)
+        ax_y_time.set_title('Y Position vs Time', fontsize=11, fontweight='bold')
+        ax_y_time.grid(True, alpha=0.3)
+        ax_y_time.tick_params(labelsize=9)
+        
+        # Style the PES plot
+        ax_pes.set_title(f'Trajectory on Potential Surface (Particle {sample_idx})', 
+                        fontsize=12, fontweight='bold')
+        ax_pes.legend(loc='upper right', fontsize=9, framealpha=0.9)
+        
+        # Add time and energy text annotations
+        time_text = fig.text(0.02, 0.95, '', fontsize=11, fontweight='bold',
+                            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9))
         
         energy_text = None
         if energies is not None:
-            energy_text = ax.text(0.02, 0.90, '', transform=ax.transAxes,
-                                 verticalalignment='top', fontsize=12,
-                                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            energy_text = fig.text(0.02, 0.90, '', fontsize=11, fontweight='bold',
+                                  bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9))
         
         def animate(frame):
             """Animation function for each frame."""
-            # Current position
+            # Current data up to this frame
+            current_time = time_points[:frame+1]
+            current_x = positions[:frame+1, 0]
+            current_y = positions[:frame+1, 1]
+            
+            # Update time series plots with dynamic scaling
+            x_line.set_data(current_time, current_x)
+            y_line.set_data(current_time, current_y)
+            
+            # Auto-scale time series axes to current data
+            if len(current_time) > 1:
+                time_margin = (current_time[-1] - current_time[0]) * 0.05
+                ax_x_time.set_xlim(current_time[0] - time_margin, current_time[-1] + time_margin)
+                ax_y_time.set_xlim(current_time[0] - time_margin, current_time[-1] + time_margin)
+                
+                x_margin = (current_x.max() - current_x.min()) * 0.1 + 0.01
+                y_margin = (current_y.max() - current_y.min()) * 0.1 + 0.01
+                ax_x_time.set_ylim(current_x.min() - x_margin, current_x.max() + x_margin)
+                ax_y_time.set_ylim(current_y.min() - y_margin, current_y.max() + y_margin)
+            else:
+                # Initial frame setup
+                ax_x_time.set_xlim(time_points[0] - 0.1, time_points[0] + 0.1)
+                ax_y_time.set_xlim(time_points[0] - 0.1, time_points[0] + 0.1)
+                ax_x_time.set_ylim(positions[0, 0] - 0.1, positions[0, 0] + 0.1)
+                ax_y_time.set_ylim(positions[0, 1] - 0.1, positions[0, 1] + 0.1)
+            
+            # Update trajectory on PES
             current_pos.set_data([positions[frame, 0]], [positions[frame, 1]])
             
             # Show start position
@@ -819,18 +811,19 @@ class MuellerBrownVisualizer:
             trail_y = positions[trail_start:frame+1, 1]
             trajectory_line.set_data(trail_x, trail_y)
             
-            # Update time
+            # Update time display
             time_text.set_text(f'Time: {time_points[frame]:.3f}')
             
             # Update energy if available
             if energy_text is not None and energies is not None:
                 energy_text.set_text(f'Energy: {energies[frame]:.3f}')
             
-            # Update title with progress
+            # Update progress in main title
             progress = (frame + 1) / len(positions) * 100
-            title.set_text(f'Trajectory Animation (Particle {sample_idx}) - {progress:.1f}%')
+            fig.suptitle(f'Langevin Dynamics Animation - {progress:.1f}% Complete', 
+                        fontsize=14, fontweight='bold', y=0.98)
             
-            return trajectory_line, current_pos, start_pos, time_text, title
+            return x_line, y_line, trajectory_line, current_pos, start_pos
         
         # Create animation
         anim = FuncAnimation(
@@ -966,38 +959,6 @@ class MuellerBrownVisualizer:
 
         plt.tight_layout()
         return fig, axes
-
-    def plot_msd_vs_time(self, data: dict, sample_idx: int = 0) -> tuple[Figure, Axes]:
-        """Plot mean squared displacement vs time.
-        
-        Raises:
-            ValueError: If positions data is not available
-        """
-        if "positions" not in data:
-            raise ValueError("Position data not available - was 'positions' included in saved observables?")
-            
-        positions = data["positions"][:, sample_idx, :]  # (n_steps, 2)
-        dt = data["dt"]
-        save_every = data.get("save_every", 1)
-        n_transient_removed = data.get("n_transient_removed", 0)
-        
-        # Calculate time points accounting for transient removal
-        time_offset = n_transient_removed * save_every * dt
-        time_points = time_offset + np.arange(len(positions)) * save_every * dt
-
-        # Calculate MSD from initial position
-        initial_pos = positions[0]
-        msd = np.sum((positions - initial_pos) ** 2, axis=1)
-
-        fig, ax = plt.subplots(figsize=(8, 4))
-
-        ax.plot(time_points, msd, "g-", linewidth=2)
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Mean Squared Displacement")
-        ax.set_title("MSD vs Time")
-        ax.grid(True, alpha=0.3)
-
-        return fig, ax
 
     def plot_energy_vs_time(
         self, data: dict, sample_idx: int = 0

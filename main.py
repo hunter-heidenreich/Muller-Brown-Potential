@@ -21,10 +21,8 @@ from src.muller_brown import (
     get_artifact_directories,
     generate_initial_positions,
     create_experiment_config,
-    calculate_trajectory_statistics,
     set_random_seed,
     apply_transient_removal,
-    compute_batch_statistics,
 )
 
 
@@ -82,13 +80,7 @@ def run_single_simulation(config: dict) -> dict:
         if obs in raw_results:
             results[obs] = raw_results[obs]
 
-    # Calculate statistics
-    stats = calculate_trajectory_statistics(raw_results)  # Use full data for statistics
-    results["statistics"] = stats
     results["config"] = config
-
-    print("Simulation completed!")
-    print(f"Final mean displacement: {stats['mean_displacement']:.3f}")
 
     return results
 
@@ -268,14 +260,6 @@ def create_visualizations(results: dict, output_dir: str | Path = "plots", save_
         except ValueError as e:
             print(f"Skipping force time series: {e}")
 
-    # MSD vs time
-    if "positions" in results:
-        try:
-            fig, ax = visualizer.plot_msd_vs_time(results, sample_idx=0)
-            _save_plot(fig, output_path, "0_msd_vs_time.png")
-        except ValueError as e:
-            print(f"Skipping MSD plot: {e}")
-
     # Energy vs time
     if "potential_energy" in results:
         try:
@@ -407,13 +391,6 @@ def create_batch_visualizations(all_results: list, output_dir: str | Path = "plo
         except ValueError as e:
             print(f"Skipping force time series: {e}")
 
-    if "positions" in first_result:
-        try:
-            fig, ax = visualizer.plot_msd_vs_time(first_result, sample_idx=0)
-            _save_plot(fig, output_path, "0_msd_vs_time.png")
-        except ValueError as e:
-            print(f"Skipping MSD plot: {e}")
-
     if "potential_energy" in first_result:
         try:
             fig, ax = visualizer.plot_energy_vs_time(first_result, sample_idx=0)
@@ -421,77 +398,7 @@ def create_batch_visualizations(all_results: list, output_dir: str | Path = "plo
         except ValueError as e:
             print(f"Skipping energy time series: {e}")
 
-    # Batch-specific statistics
-    print("Creating batch statistics plots...")
-    _create_batch_statistics_plots(all_results, output_path, visualizer)
-
     print(f"Batch plots saved to {output_path}")
-
-
-def _create_batch_statistics_plots(
-    all_results: list, output_path: Path, visualizer: MuellerBrownVisualizer
-):
-    """Create batch-specific statistical analysis plots."""
-    import numpy as np
-
-    # Extract statistics from all simulations
-    displacements = [r["statistics"]["mean_displacement"] for r in all_results]
-    
-    # Only create final position plots if positions are available
-    if "positions" in all_results[0]:
-        final_positions = [
-            r["positions"][-1] for r in all_results
-        ]  # Final positions of all particles
-    else:
-        final_positions = None
-
-    # 1. Displacement distribution histogram
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.hist(displacements, bins=20, alpha=0.7, edgecolor="black")
-    ax.set_xlabel("Mean Displacement")
-    ax.set_ylabel("Frequency")
-    ax.set_title(
-        f"Distribution of Mean Displacements\n({len(all_results)} simulations)"
-    )
-    ax.grid(True, alpha=0.3)
-    _save_plot(fig, output_path, "displacement_histogram.png")
-
-    # 2. Final position scatter plot on potential surface (only if positions available)
-    if final_positions is not None:
-        fig, ax = visualizer.plot_potential_surface()
-
-        # Plot all final positions
-        all_final_pos = np.concatenate(final_positions, axis=0)
-        ax.scatter(
-            all_final_pos[:, 0],
-            all_final_pos[:, 1],
-            c="white",
-            s=30,
-            alpha=0.8,
-            edgecolors="black",
-            linewidth=0.5,
-        )
-
-        ax.set_title(
-            f"Final Positions from {len(all_results)} Simulations\n({all_final_pos.shape[0]} particles total)"
-        )
-        _save_plot(fig, output_path, "final_positions_scatter.png")
-
-    # 3. Convergence plot - how displacement varies across simulations
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(range(1, len(displacements) + 1), displacements, "bo-", markersize=4)
-    ax.set_xlabel("Simulation Number")
-    ax.set_ylabel("Mean Displacement")
-    ax.set_title("Displacement Convergence Across Simulations")
-    ax.grid(True, alpha=0.3)
-
-    # Add mean line
-    mean_disp = np.mean(displacements)
-    ax.axhline(
-        mean_disp, color="red", linestyle="--", label=f"Overall Mean: {mean_disp:.3f}"
-    )
-    ax.legend()
-    _save_plot(fig, output_path, "displacement_convergence.png")
 
 
 def demo_potential_features():
@@ -555,13 +462,6 @@ def run_plotting_mode(artifact_dir: str | Path):
             "dt": data.get("dt", 0.01),
         }
     }
-
-    # Calculate statistics if not present (only if positions are available)
-    if "statistics" not in results and "positions" in results:
-        # For statistics calculation, we need a full results structure
-        full_results = results.copy()
-        # Use positions for displacement calculation even if other observables are missing
-        results["statistics"] = calculate_trajectory_statistics(full_results)
 
     print("Regenerating plots...")
     create_visualizations(results, output_dir=artifact_path, save_animation=False)  # Don't create animations by default in plot mode
@@ -686,18 +586,6 @@ def main():
         )
 
         print(f"\nCompleted {len(all_results)} simulations")
-
-        # Analyze batch results using utility function
-        batch_stats = compute_batch_statistics(all_results)
-        displacement_stats = batch_stats["mean_displacement_stats"]
-
-        print("Mean displacement statistics:")
-        print(f"  Average: {displacement_stats['mean']:.3f}")
-        print(f"  Std Dev: {displacement_stats['std']:.3f}")
-        print(
-            f"  Range: [{displacement_stats['min']:.3f}, {displacement_stats['max']:.3f}]"
-        )
-
         if args.save_plots:
             # For batch mode, create visualizations in the same artifact directory
             print("Creating visualizations from batch results...")

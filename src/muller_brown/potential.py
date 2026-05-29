@@ -124,9 +124,7 @@ class MuellerBrownPotential(nn.Module):
         if self.use_autograd:
             coordinates = coordinates.requires_grad_(True)
             potential = self.forward(coordinates)
-            grad = torch.autograd.grad(
-                potential.sum(), coordinates, create_graph=True
-            )[0]
+            grad = torch.autograd.grad(potential.sum(), coordinates)[0]
             return -grad
         else:
             return _calculate_force(

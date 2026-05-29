@@ -56,11 +56,10 @@ def apply_transient_removal(results: dict, n_transient: int) -> dict:
         )
         return results
 
-    # Remove transients from all observables
-    results["positions"] = positions[n_transient_saved:]
-    results["velocities"] = results["velocities"][n_transient_saved:]
-    results["forces"] = results["forces"][n_transient_saved:]
-    results["potential_energy"] = results["potential_energy"][n_transient_saved:]
+    # Remove transients from whichever observables are present
+    for obs in ("positions", "velocities", "forces", "potential_energy"):
+        if obs in results:
+            results[obs] = results[obs][n_transient_saved:]
 
     # Update metadata
     original_n_saved = positions.shape[0]

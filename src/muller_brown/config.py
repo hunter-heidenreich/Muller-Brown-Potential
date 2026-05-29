@@ -97,7 +97,7 @@ def create_experiment_config(
     initial_position_method: str = "random",
     observables: list[str] | None = None,
     **kwargs,
-) -> dict[str, any]:
+) -> dict:
     """Create a standardized configuration dictionary for simulation experiments."""
     # Validate inputs
     _validate_positive_integer(n_particles, "n_particles")

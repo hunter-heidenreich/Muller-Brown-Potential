@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 from dataclasses import dataclass, asdict
-from typing import List
 from src.muller_brown import MuellerBrownPotential
 
 
@@ -31,7 +30,7 @@ class PerformanceBenchmark:
     def __init__(self, device: str = "cpu", dtype: torch.dtype = torch.float64):
         self.device = device
         self.dtype = dtype
-        self.results: List[BenchmarkResult] = []
+        self.results: list[BenchmarkResult] = []
 
         # Initialize potentials
         self.potential_analytical = MuellerBrownPotential(
@@ -165,7 +164,7 @@ class PerformanceBenchmark:
         print(f"📊 Plots saved to {output_path}")
 
     def _plot_throughput_analysis(
-        self, analytical: List, autograd: List, output_path: Path
+        self, analytical: list[BenchmarkResult], autograd: list[BenchmarkResult], output_path: Path
     ):
         """Plot throughput vs problem size."""
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
@@ -231,7 +230,7 @@ class PerformanceBenchmark:
         plt.close()
 
     def _plot_time_per_particle(
-        self, analytical: List, autograd: List, output_path: Path
+        self, analytical: list[BenchmarkResult], autograd: list[BenchmarkResult], output_path: Path
     ):
         """Plot time per particle vs problem size."""
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))

@@ -1,5 +1,7 @@
 """Langevin dynamics simulation for the Müller-Brown potential."""
 
+import math
+
 import numpy as np
 import torch
 from torch import Tensor
@@ -15,7 +17,9 @@ class LangevinSimulator:
     Langevin dynamics simulator for the Müller-Brown potential.
 
     Implements: m*dv/dt = F(x) - γ*m*v + η(t)
-    Uses velocity-Verlet integration with proper Langevin thermostat.
+    Integrated with the BAOAB splitting scheme (Leimkuhler & Matthews, 2013),
+    which solves the friction + noise part exactly and samples the canonical
+    distribution accurately (exact configurational sampling for harmonic systems).
     """
 
     def __init__(
@@ -39,50 +43,45 @@ class LangevinSimulator:
 
         # Pre-compute constants for efficiency
         self.kB = 1.0
-        noise_coeff = dt * self.kB * temperature * friction / mass
-        self._noise_std = torch.sqrt(
-            torch.tensor(noise_coeff, device=device, dtype=dtype)
-        )
         self._half_dt = 0.5 * dt
         self._mass_inv = 1.0 / mass
 
-    def _compute_noise_term(self, n_particles: int) -> Tensor:
-        """Generate Gaussian white noise for Langevin thermostat."""
-        return self._noise_std * torch.randn(
-            n_particles, 2, device=self.device, dtype=self.dtype
-        )
+        # Ornstein-Uhlenbeck (O step) coefficients: the exact solution of the
+        # friction + noise sub-dynamics over one timestep. _c1 decays velocity,
+        # _c2 is the matching thermal-noise amplitude (fluctuation-dissipation).
+        self._c1 = math.exp(-friction * dt)
+        self._c2 = math.sqrt(self.kB * temperature / mass * (1.0 - self._c1**2))
 
-    def _velocity_verlet_step(
+    def _baoab_step(
         self, positions: Tensor, velocities: Tensor, forces: Tensor
     ) -> tuple[Tensor, Tensor, Tensor]:
-        """Perform one velocity-Verlet integration step with Langevin thermostat."""
+        """Perform one BAOAB Langevin integration step.
+
+        Splits the step as B-A-O-A-B, integrating the friction/noise (O) part
+        exactly via the Ornstein-Uhlenbeck solution. `forces` is the force at
+        `positions`; the returned force is the input for the next step, so only
+        one force evaluation is needed per step.
+        """
         n_particles = positions.shape[0]
 
-        # Generate noise for both half-steps
-        noise1 = self._compute_noise_term(n_particles) * 0.5
-        noise2 = self._compute_noise_term(n_particles) * 0.5
+        # B: half velocity kick from the current force
+        velocities = velocities + self._half_dt * self._mass_inv * forces
 
-        # Velocity update (first half)
-        vel_half = (
-            velocities
-            + self._half_dt * (forces * self._mass_inv - self.friction * velocities)
-            + noise1
-        )
+        # A: half position drift
+        positions = positions + self._half_dt * velocities
 
-        # Position update
-        new_positions = positions + vel_half * self.dt
+        # O: exact friction + thermal noise update
+        noise = torch.randn(n_particles, 2, device=self.device, dtype=self.dtype)
+        velocities = self._c1 * velocities + self._c2 * noise
 
-        # Force update
-        new_forces = self.potential.force(new_positions)
+        # A: half position drift
+        positions = positions + self._half_dt * velocities
 
-        # Velocity update (second half)
-        new_velocities = (
-            vel_half
-            + self._half_dt * (new_forces * self._mass_inv - self.friction * vel_half)
-            + noise2
-        )
+        # B: half velocity kick from the force at the new position
+        forces = self.potential.force(positions)
+        velocities = velocities + self._half_dt * self._mass_inv * forces
 
-        return new_positions, new_velocities, new_forces
+        return positions, velocities, forces
 
     def simulate(
         self,
@@ -138,7 +137,7 @@ class LangevinSimulator:
         for step in tqdm(
             range(1, n_steps + 1), desc="Simulation Progress", unit="steps"
         ):
-            positions, velocities, forces = self._velocity_verlet_step(
+            positions, velocities, forces = self._baoab_step(
                 positions, velocities, forces
             )
 

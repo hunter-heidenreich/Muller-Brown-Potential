@@ -15,3 +15,6 @@ wheels/
 
 # Artifact directories (generated data and plots)
 artifacts/
+
+# Generated verification plot
+langevin_verification.png

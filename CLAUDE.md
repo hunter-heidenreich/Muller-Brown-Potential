@@ -17,11 +17,12 @@ uv run python main.py --mode plot --artifact-dir artifacts/<timestamp>  # regene
 uv run python main.py --mode list                # list artifact directories
 uv run python example.py                         # minimal programmatic example
 uv run python benchmark.py                       # analytical-vs-autograd force timing
+uv run python verify_langevin.py                 # validate BAOAB integrator vs analytic harmonic oscillator
 uv run python manage_artifacts.py list|clean [--delete]
 uv run ruff check .                              # lint (ruff is the only dev dependency)
 ```
 
-There is **no test suite**. Verification is done by running simulations and inspecting output/plots.
+There is **no unit-test suite**. `verify_langevin.py` is the closest thing to a correctness test — it samples a harmonic oscillator with the BAOAB integrator and checks the position/velocity variances against the analytic canonical distribution (exits non-zero on failure). Other verification is by running simulations and inspecting output/plots.
 
 ## Architecture
 

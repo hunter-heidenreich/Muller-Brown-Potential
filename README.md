@@ -158,7 +158,7 @@ muller_brown/
 
 ### `LangevinSimulator`
 
-- Velocity-Verlet integration with proper Langevin thermostat
+- BAOAB integration (Leimkuhler & Matthews, 2013) for accurate canonical sampling
 - Tracks all observables (positions, velocities, forces, energies)
 - Configurable temperature, friction, and time step
 

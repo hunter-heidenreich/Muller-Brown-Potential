@@ -89,12 +89,23 @@ class LangevinSimulator:
         n_steps: int,
         save_every: int = 1,
         initial_velocities: Tensor | np.ndarray | None = None,
+        observables: list[str] | tuple[str, ...] | None = None,
     ) -> dict:
         """
         Run Langevin dynamics simulation.
 
-        Returns dict with full observables: positions, velocities, forces, potential energy.
+        `observables` selects which trajectories to store and return; positions
+        are always stored. Pass a subset (e.g. ("positions",)) to avoid
+        allocating velocity/force/energy arrays and recomputing energy on long
+        runs. Defaults to all four observables. Returns the stored trajectories
+        plus run metadata.
         """
+        if observables is None:
+            observables = ("positions", "velocities", "forces", "potential_energy")
+        store_velocities = "velocities" in observables
+        store_forces = "forces" in observables
+        store_energy = "potential_energy" in observables
+
         positions = convert_to_tensor(
             initial_positions, device=self.device, dtype=self.dtype
         )
@@ -107,29 +118,35 @@ class LangevinSimulator:
                 initial_velocities, device=self.device, dtype=self.dtype
             )
 
-        # Initialize storage for all observables
+        # Allocate storage only for the requested observables (positions always)
         n_save_steps = n_steps // save_every + 1
         positions_traj = torch.empty(
             n_save_steps, n_particles, 2, device=self.device, dtype=self.dtype
         )
-        velocities_traj = torch.empty(
-            n_save_steps, n_particles, 2, device=self.device, dtype=self.dtype
+        velocities_traj = (
+            torch.empty(n_save_steps, n_particles, 2, device=self.device, dtype=self.dtype)
+            if store_velocities else None
         )
-        forces_traj = torch.empty(
-            n_save_steps, n_particles, 2, device=self.device, dtype=self.dtype
+        forces_traj = (
+            torch.empty(n_save_steps, n_particles, 2, device=self.device, dtype=self.dtype)
+            if store_forces else None
         )
-        energies_traj = torch.empty(
-            n_save_steps, n_particles, device=self.device, dtype=self.dtype
+        energies_traj = (
+            torch.empty(n_save_steps, n_particles, device=self.device, dtype=self.dtype)
+            if store_energy else None
         )
 
+        # Force is always needed to drive the dynamics, even when not stored
         forces = self.potential.force(positions)
-        energies = self.potential(positions)
 
         # Store initial state
         positions_traj[0].copy_(positions)
-        velocities_traj[0].copy_(velocities)
-        forces_traj[0].copy_(forces)
-        energies_traj[0].copy_(energies)
+        if store_velocities:
+            velocities_traj[0].copy_(velocities)
+        if store_forces:
+            forces_traj[0].copy_(forces)
+        if store_energy:
+            energies_traj[0].copy_(self.potential(positions))
         save_idx = 1
 
         print(f"Starting simulation with {n_particles} particles for {n_steps} steps")
@@ -142,18 +159,17 @@ class LangevinSimulator:
             )
 
             if step % save_every == 0 and save_idx < n_save_steps:
-                energies = self.potential(positions)
                 positions_traj[save_idx].copy_(positions)
-                velocities_traj[save_idx].copy_(velocities)
-                forces_traj[save_idx].copy_(forces)
-                energies_traj[save_idx].copy_(energies)
+                if store_velocities:
+                    velocities_traj[save_idx].copy_(velocities)
+                if store_forces:
+                    forces_traj[save_idx].copy_(forces)
+                if store_energy:
+                    energies_traj[save_idx].copy_(self.potential(positions))
                 save_idx += 1
 
-        return {
+        results = {
             "positions": positions_traj.detach().cpu().numpy(),
-            "velocities": velocities_traj.detach().cpu().numpy(),
-            "forces": forces_traj.detach().cpu().numpy(),
-            "potential_energy": energies_traj.detach().cpu().numpy(),
             "dt": self.dt * save_every,
             "n_particles": n_particles,
             "n_steps": n_steps,
@@ -162,3 +178,10 @@ class LangevinSimulator:
             "friction": self.friction,
             "mass": self.mass,
         }
+        if store_velocities:
+            results["velocities"] = velocities_traj.detach().cpu().numpy()
+        if store_forces:
+            results["forces"] = forces_traj.detach().cpu().numpy()
+        if store_energy:
+            results["potential_energy"] = energies_traj.detach().cpu().numpy()
+        return results

@@ -31,7 +31,7 @@ Data flows: `MuellerBrownPotential` (energy + forces) → `LangevinSimulator` (t
 Things that take reading multiple files to see:
 
 - **Forces have two implementations** (`potential.py`), selected by `use_autograd`: the hand-derived analytical gradient (default, faster) and `torch.autograd.grad` (reference). They exist to cross-check each other — keep them numerically consistent. The hot paths (`_calculate_potential`, `_calculate_force`) are standalone `@torch.jit.script` functions; the module just dispatches to them. Potential parameters are registered buffers, so device/dtype move with the module.
-- **`simulate()` always computes all four observables** (positions, velocities, forces, potential_energy) and returns them plus metadata in one dict; trajectory arrays are `(n_save_steps, n_particles, 2)`. `config.py`'s observable list only controls what gets *saved/plotted* downstream, not what's computed.
+- **`simulate(..., observables=...)`** stores and returns only the requested trajectories (positions always kept) plus metadata in one dict; trajectory arrays are `(n_save_steps, n_particles, 2)`. Forces are always computed to drive the dynamics but only stored if requested; energy is only computed when stored. Defaults to all four when `observables=None`. `config.py`'s observable list flows straight through to this argument.
 - **`config.py`** produces the nested `simulation`/`initial_conditions`/`output` dict consumed everywhere; `create_experiment_config()` is the single source of defaults.
 
 ## Conventions

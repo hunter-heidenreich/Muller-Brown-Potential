@@ -54,31 +54,17 @@ def run_single_simulation(config: dict) -> dict:
     print(f"Starting positions:\n{initial_positions}")
 
     print("Running simulation...")
-    raw_results = simulator.simulate(
+    results = simulator.simulate(
         initial_positions=initial_positions,
         n_steps=config["simulation"]["n_steps"],
         save_every=config["simulation"]["save_every"],
+        observables=config["output"]["observables"],
     )
 
     # Apply transient removal if specified using utility function
     n_transient = config["simulation"].get("n_transient", 0)
     if n_transient > 0:
-        raw_results = apply_transient_removal(raw_results, n_transient)
-
-    # Filter results to only include requested observables
-    requested_observables = config["output"]["observables"]
-    results = {}
-    
-    # Always include metadata
-    metadata_keys = ["dt", "n_particles", "n_steps", "save_every", "temperature", "friction", "mass"]
-    for key in metadata_keys:
-        if key in raw_results:
-            results[key] = raw_results[key]
-    
-    # Include only requested observables
-    for obs in requested_observables:
-        if obs in raw_results:
-            results[obs] = raw_results[obs]
+        results = apply_transient_removal(results, n_transient)
 
     results["config"] = config
 

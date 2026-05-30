@@ -18,11 +18,22 @@ uv run python main.py --mode list                # list artifact directories
 uv run python example.py                         # minimal programmatic example
 uv run python benchmark.py                       # analytical-vs-autograd force timing
 uv run python verify_langevin.py                 # validate BAOAB integrator vs analytic harmonic oscillator
+uv run python convergence_study.py               # dt-convergence study + plot (kinetic-temperature bias ~ dt^2)
 uv run python manage_artifacts.py list|clean [--delete]
-uv run ruff check .                              # lint (ruff is the only dev dependency)
+uv run --extra dev pytest                        # full test suite
+uv run --extra dev pytest -m "not statistical"   # fast deterministic tests only (~2s)
+uv run --extra dev ruff check .                  # lint
 ```
 
-There is **no unit-test suite**. `verify_langevin.py` is the closest thing to a correctness test — it samples a harmonic oscillator with the BAOAB integrator and checks the position/velocity variances against the analytic canonical distribution (exits non-zero on failure). Other verification is by running simulations and inspecting output/plots.
+## Testing
+
+`tests/` is a `pytest` suite (`uv run --extra dev pytest`):
+- **Deterministic** (`test_potential.py`, `test_integrator.py`, `test_io.py`): critical-point Hessian signatures, analytical-vs-autograd force, NVE energy conservation at friction=0 (BAOAB → velocity-Verlet), seed reproducibility, HDF5 round-trip, shape/dtype invariants. Fast, hard assertions.
+- **Statistical** (`test_sampling.py`, marked `@pytest.mark.statistical`): equipartition, harmonic distributions, the Müller-Brown Boltzmann ⟨V⟩ vs a grid-integrated canonical average, free-particle VACF, and the dt² kinetic-temperature convergence order. Seeded with tolerances above the sampling error. Exclude with `-m "not statistical"`.
+
+Key physics gotcha the tests encode: BAOAB samples *configurational* averages accurately (exactly for a harmonic oscillator) but the *kinetic* temperature carries an O(dt²) bias that grows with curvature — ~4% on Müller-Brown at dt=0.01. So equipartition is tested on soft/free systems, not Müller-Brown; `convergence_study.py` characterizes the bias vanishing as dt→0.
+
+`verify_langevin.py` remains as a standalone script (BAOAB position/velocity variances vs the analytic harmonic distribution, exits non-zero on failure).
 
 ## Architecture
 

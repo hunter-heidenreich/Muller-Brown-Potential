@@ -3,30 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
 
-# --- 1. Ground Truth (Muller-Brown Class) ---
-class MuellerBrownGT(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.register_buffer("A", torch.tensor([-200., -100., -170., 15.]))
-        self.register_buffer("a", torch.tensor([-1., -1., -6.5, 0.7]))
-        self.register_buffer("b", torch.tensor([0., 0., 11., 0.6]))
-        self.register_buffer("c", torch.tensor([-10., -10., -6.5, 0.7]))
-        self.register_buffer("x0", torch.tensor([1., 0., -0.5, -1.]))
-        self.register_buffer("y0", torch.tensor([0., 0.5, 1.5, 1.]))
+from src.muller_brown import MuellerBrownPotential
 
-    def forward(self, coords):
-        # coords shape: (N, 2)
-        x, y = coords[:, 0], coords[:, 1]
-        V = torch.zeros_like(x)
-        for i in range(4):
-            dx = x - self.x0[i]
-            dy = y - self.y0[i]
-            V += self.A[i] * torch.exp(self.a[i]*dx**2 + self.b[i]*dx*dy + self.c[i]*dy**2)
-        return V.unsqueeze(1) # Shape (N, 1)
-
-# --- 2. The Student Model (Simple MLP) ---
+# --- 1. The Student Model (Simple MLP) ---
 class SimpleNNP(nn.Module):
     def __init__(self):
         super().__init__()
@@ -44,13 +24,13 @@ class SimpleNNP(nn.Module):
 
 # --- 3. Setup Data and Training ---
 torch.manual_seed(42)
-gt_model = MuellerBrownGT()
+gt_model = MuellerBrownPotential(dtype=torch.float32)
 student_model = SimpleNNP()
 
 # Generate Training Data (Random sampling over the relevant domain)
 n_samples = 2000
 X_train = (torch.rand(n_samples, 2) * torch.tensor([2.7, 2.5])) + torch.tensor([-1.5, -0.5])
-y_train = gt_model(X_train)
+y_train = gt_model(X_train).unsqueeze(1)  # (N, 1) to match the MLP output
 
 optimizer = optim.Adam(student_model.parameters(), lr=0.01)
 criterion = nn.MSELoss()
@@ -115,5 +95,5 @@ fig.colorbar(contour, cax=cbar_ax, label='Potential Energy')
 
 plt.suptitle("Benchmarking Machine Learning: Learning the Müller-Brown Surface", fontsize=16, fontweight='bold', y=1.05)
 plt.tight_layout(rect=[0, 0, 0.9, 1]) # Make room for colorbar and title
-plt.savefig('muller_brown_ml_benchmark.png', dpi=150, bbox_inches='tight')
+plt.savefig('muller-brown-ml-benchmark.png', dpi=150, bbox_inches='tight')
 plt.show()

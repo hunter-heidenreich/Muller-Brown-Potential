@@ -4,11 +4,11 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A modern, efficient PyTorch implementation of the Müller-Brown potential energy surface with Langevin dynamics simulation.
+A PyTorch implementation of the Müller-Brown potential energy surface with BAOAB Langevin dynamics.
 
 ## Overview
 
-This package provides a clean implementation of the Müller-Brown potential, a 2D model potential energy surface widely used for testing molecular dynamics algorithms and studying rare events in chemical systems.
+This package implements the Müller-Brown potential, a 2D model potential energy surface widely used for testing molecular dynamics algorithms and studying rare events in chemical systems.
 
 See [Implementing the Müller-Brown Potential in PyTorch](https://hunterheidenreich.com/posts/muller-brown-in-pytorch/) for a detailed blog post explaining the implementation and usage.
 
@@ -70,7 +70,7 @@ uv run python main.py --mode plot --artifact-dir artifacts/20250824_184610
 
 ```python
 import torch
-from src.muller_brown import MuellerBrownPotential, LangevinSimulator, MuellerBrownVisualizer
+from muller_brown import MuellerBrownPotential, LangevinSimulator, MuellerBrownVisualizer
 
 # Create the potential
 potential = MuellerBrownPotential(dtype=torch.float64)
@@ -156,7 +156,7 @@ muller_brown/
 ├── src/muller_brown/        # Core package
 │   ├── potential.py         # Müller-Brown potential (torch.compile force)
 │   ├── simulation.py        # Langevin dynamics simulator
-│   ├── visualization.py     # Comprehensive plotting suite
+│   ├── visualization.py     # Plotting and animation suite
 │   ├── io.py               # HDF5 data I/O operations
 │   ├── data.py             # Data processing utilities
 │   ├── analysis.py         # Statistical analysis functions
@@ -190,20 +190,20 @@ muller_brown/
 
 ### `MuellerBrownVisualizer`
 
-- Comprehensive suite of distribution plots
-- Time-series analysis for all observables
+- Distribution plots for every observable (position, velocity, force, energy)
+- Time-series plots for all observables
 - Log-scale visualization for rare events
 - Automatic critical point annotation
 
 ## Performance
 
-The implementation is optimized for:
+Design choices that affect performance:
 
-- **Compiled forces**: `torch.compile` (shape-dynamic) for fast force evaluation
-- **GPU Support**: All tensors support CUDA acceleration
-- **Efficient Storage**: HDF5 with compression for large datasets
-- **Numerical Stability**: Double precision by default
-- **Memory Management**: Configurable save frequency for long simulations
+- **Compiled forces**: `torch.compile` (shape-dynamic) on the force path
+- **Device-agnostic**: runs on CPU or CUDA; the included benchmark measures CPU
+- **Storage**: HDF5 with gzip compression for large trajectories
+- **Numerical precision**: double precision (`float64`) by default
+- **Memory**: configurable save frequency for long simulations
 
 Each step is vectorized over particles, so for small particle counts the wall
 time is dominated by fixed per-step overhead (the force call and noise draw): a

@@ -4,8 +4,8 @@ conversion."""
 import numpy as np
 import torch
 
-from src.muller_brown import apply_transient_removal, combine_batch_trajectories
-from src.muller_brown.data import convert_to_tensor
+from muller_brown import apply_transient_removal, combine_batch_trajectories
+from muller_brown.data import convert_to_tensor
 
 
 def _fake_results(n_saved: int = 10, n_particles: int = 2, save_every: int = 100) -> dict:

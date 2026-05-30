@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Modern implementation of Müller-Brown potential simulation.
+Command-line interface for Müller-Brown potential simulation.
 
-This script demonstrates the usage of the modular Müller-Brown simulation package
-with clean separation of concerns and modern PyTorch practices.
+Entry point over the simulation package: demo, single-run, batch, and
+plot-regeneration modes wiring the potential, integrator, and visualizer.
 """
 
 import argparse
@@ -12,7 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 
-from src.muller_brown import (
+from muller_brown import (
     MuellerBrownPotential,
     LangevinSimulator,
     MuellerBrownVisualizer,
@@ -83,7 +83,7 @@ def run_batch_simulation(n_simulations: int = 10, observables: list[str] | None 
     base_seed = sim_kwargs["seed"]  # Now always has a value
 
     # Create a main artifact directory for this batch
-    from src.muller_brown import create_artifact_directory
+    from muller_brown import create_artifact_directory
 
     batch_artifact_dir = create_artifact_directory()
     print(f"Saving batch results to: {batch_artifact_dir}")

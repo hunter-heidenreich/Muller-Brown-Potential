@@ -71,7 +71,7 @@ def _calculate_force(
 
 class MuellerBrownPotential(nn.Module):
     """
-    Müller-Brown potential energy surface with JIT-compiled force calculations.
+    Müller-Brown potential energy surface with torch.compile-accelerated forces.
 
     V(x,y) = ∑ᵢ Aᵢ exp(aᵢ(x-x₀ᵢ)² + bᵢ(x-x₀ᵢ)(y-y₀ᵢ) + cᵢ(y-y₀ᵢ)²)
     """

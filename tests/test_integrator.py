@@ -10,7 +10,7 @@ than a sampling one.
 import numpy as np
 import torch
 
-from src.muller_brown import MuellerBrownPotential, LangevinSimulator, set_random_seed
+from muller_brown import MuellerBrownPotential, LangevinSimulator, set_random_seed
 
 
 def _run(seed: int) -> dict:

@@ -26,7 +26,7 @@ def _save_hdf5_file(data: dict, filepath: Path, observables: list[str] | None = 
     """
     # Default to all observables if none specified
     if observables is None:
-        from src.muller_brown.config import DEFAULT_OBSERVABLES
+        from muller_brown.config import DEFAULT_OBSERVABLES
         observables = DEFAULT_OBSERVABLES
     
     with h5py.File(filepath, "w") as f:

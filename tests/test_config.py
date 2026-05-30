@@ -4,14 +4,14 @@ and experiment-config construction (including its input validation)."""
 import numpy as np
 import pytest
 
-from src.muller_brown import (
+from muller_brown import (
     generate_initial_positions,
     validate_observables,
     create_experiment_config,
     DEFAULT_OBSERVABLES,
     set_random_seed,
 )
-from src.muller_brown.constants import MULLER_BROWN_MINIMA
+from muller_brown.constants import MULLER_BROWN_MINIMA
 
 
 def test_random_positions_have_right_shape():

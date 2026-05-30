@@ -8,7 +8,7 @@ and creating visualizations programmatically.
 
 import torch
 
-from src.muller_brown import (
+from muller_brown import (
     MuellerBrownPotential,
     LangevinSimulator,
     MuellerBrownVisualizer,

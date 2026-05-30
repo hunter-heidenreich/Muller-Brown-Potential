@@ -2,12 +2,12 @@
 
 import numpy as np
 
-from src.muller_brown.constants import (
+from muller_brown.constants import (
     MULLER_BROWN_MINIMA,
     DEFAULT_X_RANGE,
     DEFAULT_Y_RANGE,
 )
-from src.muller_brown.io import _validate_positive_integer
+from muller_brown.io import _validate_positive_integer
 
 # Default observables to save and plot
 DEFAULT_OBSERVABLES = ["positions", "velocities", "forces", "potential_energy"]

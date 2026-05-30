@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 from dataclasses import dataclass, asdict
-from src.muller_brown import MuellerBrownPotential
+from muller_brown import MuellerBrownPotential
 
 
 @dataclass

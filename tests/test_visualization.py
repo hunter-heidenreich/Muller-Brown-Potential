@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from matplotlib.figure import Figure
 
-from src.muller_brown import (
+from muller_brown import (
     MuellerBrownPotential,
     LangevinSimulator,
     MuellerBrownVisualizer,

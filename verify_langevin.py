@@ -20,7 +20,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from torch import Tensor
 
-from src.muller_brown import LangevinSimulator, set_random_seed
+from muller_brown import LangevinSimulator, set_random_seed
 
 
 class HarmonicPotential(nn.Module):

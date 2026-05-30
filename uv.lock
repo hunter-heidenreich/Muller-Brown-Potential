@@ -712,7 +712,7 @@ wheels = [
 [[package]]
 name = "muller-brown"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "h5py" },
     { name = "matplotlib" },

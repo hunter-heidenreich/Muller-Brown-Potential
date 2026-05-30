@@ -9,7 +9,7 @@ Newton refinement lands on a true stationary point a tiny distance away.
 import torch
 from torch.autograd.functional import hessian
 
-from src.muller_brown import MuellerBrownPotential
+from muller_brown import MuellerBrownPotential
 
 
 def _hessian_eigenvalues(potential: MuellerBrownPotential, x: torch.Tensor) -> torch.Tensor:

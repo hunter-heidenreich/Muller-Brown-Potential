@@ -46,6 +46,7 @@ def kinetic_temperature(
         results = simulator.simulate(
             x0, n_steps=n_steps, save_every=save_every,
             observables=["positions", "velocities"],
+            progress=False,
         )
         velocities = results["velocities"][len(results["velocities"]) // 4:]
         values.append((velocities**2).mean())

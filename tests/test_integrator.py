@@ -23,6 +23,7 @@ def _run(seed: int) -> dict:
         n_steps=2000,
         save_every=10,
         observables=["positions", "velocities"],
+        progress=False,
     )
 
 
@@ -44,6 +45,7 @@ def test_energy_conserved_without_friction():
         save_every=save_every,
         initial_velocities=v0,
         observables=["positions", "velocities", "potential_energy"],
+        progress=False,
     )
 
     pe = results["potential_energy"][:, 0]

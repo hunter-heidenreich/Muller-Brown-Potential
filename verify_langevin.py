@@ -61,7 +61,7 @@ def sample_equilibrium(
         dt=dt,
     )
     initial_positions = np.zeros((n_particles, 2))
-    results = simulator.simulate(initial_positions, n_steps=n_steps, save_every=save_every)
+    results = simulator.simulate(initial_positions, n_steps=n_steps, save_every=save_every, progress=False)
 
     start = int(results["positions"].shape[0] * discard_fraction)
     positions = results["positions"][start:].reshape(-1, 2)

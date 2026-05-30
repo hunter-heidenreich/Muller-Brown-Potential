@@ -19,7 +19,7 @@ def _make_results(observables: list[str]) -> dict:
     potential = MuellerBrownPotential(dtype=torch.float64)
     simulator = LangevinSimulator(potential, temperature=15.0, friction=1.0, dt=0.01)
     return simulator.simulate(
-        np.array([[0.0, 0.0]]), n_steps=500, save_every=50, observables=observables
+        np.array([[0.0, 0.0]]), n_steps=500, save_every=50, observables=observables, progress=False
     )
 
 

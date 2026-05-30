@@ -90,6 +90,7 @@ class LangevinSimulator:
         save_every: int = 1,
         initial_velocities: Tensor | np.ndarray | None = None,
         observables: list[str] | tuple[str, ...] | None = None,
+        progress: bool = True,
     ) -> dict:
         """
         Run Langevin dynamics simulation.
@@ -97,8 +98,9 @@ class LangevinSimulator:
         `observables` selects which trajectories to store and return; positions
         are always stored. Pass a subset (e.g. ("positions",)) to avoid
         allocating velocity/force/energy arrays and recomputing energy on long
-        runs. Defaults to all four observables. Returns the stored trajectories
-        plus run metadata.
+        runs. Defaults to all four observables. `progress=False` silences the
+        startup message and tqdm bar (useful in library/test code). Returns the
+        stored trajectories plus run metadata.
         """
         if observables is None:
             observables = ("positions", "velocities", "forces", "potential_energy")
@@ -149,11 +151,13 @@ class LangevinSimulator:
             energies_traj[0].copy_(self.potential(positions))
         save_idx = 1
 
-        print(f"Starting simulation with {n_particles} particles for {n_steps} steps")
+        if progress:
+            print(f"Starting simulation with {n_particles} particles for {n_steps} steps")
 
-        for step in tqdm(
-            range(1, n_steps + 1), desc="Simulation Progress", unit="steps"
-        ):
+        steps = range(1, n_steps + 1)
+        if progress:
+            steps = tqdm(steps, desc="Simulation Progress", unit="steps")
+        for step in steps:
             positions, velocities, forces = self._baoab_step(
                 positions, velocities, forces
             )

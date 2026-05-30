@@ -54,6 +54,7 @@ def _kinetic_temperature(
         n_steps=n_steps,
         save_every=save_every,
         observables=["positions", "velocities"],
+        progress=False,
     )
     velocities = results["velocities"][len(results["velocities"]) // 4:]  # drop transient
     return float((velocities**2).mean())
@@ -83,6 +84,7 @@ def test_harmonic_position_distribution():
     results = simulator.simulate(
         np.zeros((400, 2)), n_steps=8000, save_every=10,
         observables=["positions", "potential_energy"],
+        progress=False,
     )
     start = len(results["positions"]) // 4
     positions = results["positions"][start:].reshape(-1, 2)
@@ -121,7 +123,7 @@ def test_muller_brown_samples_boltzmann_distribution():
     simulator = LangevinSimulator(potential, temperature=temperature, friction=1.0, dt=0.01)
     x0 = np.random.uniform([-1.5, -0.2], [1.0, 2.0], (300, 2))
     results = simulator.simulate(
-        x0, n_steps=40000, save_every=20, observables=["positions", "potential_energy"]
+        x0, n_steps=40000, save_every=20, observables=["positions", "potential_energy"], progress=False
     )
     energies = results["potential_energy"][len(results["potential_energy"]) // 2:].reshape(-1)
     assert abs(energies.mean() - reference) / abs(reference) < 0.02
@@ -140,6 +142,7 @@ def test_free_particle_velocity_autocorrelation(gamma):
     results = simulator.simulate(
         np.zeros((n_particles, 2)), n_steps=4000, save_every=save_every,
         initial_velocities=v0, observables=["positions", "velocities"],
+        progress=False,
     )
     velocities = results["velocities"]
     n_frames, max_lag = velocities.shape[0], 80
@@ -169,6 +172,7 @@ def test_kinetic_temperature_converges_second_order():
             results = simulator.simulate(
                 np.zeros((500, 2)), n_steps=20000, save_every=10,
                 observables=["positions", "velocities"],
+                progress=False,
             )
             values.append((results["velocities"][len(results["velocities"]) // 4:] ** 2).mean())
         return abs(np.mean(values) - temperature)

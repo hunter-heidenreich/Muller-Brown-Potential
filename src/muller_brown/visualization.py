@@ -11,10 +11,11 @@ from src.muller_brown.potential import MuellerBrownPotential
 from src.muller_brown.data import convert_to_tensor
 
 
-# Default plotting constants
+# Default plotting constants (wider than the simulation ranges in constants.py,
+# to give the potential surface some margin in figures)
 DEFAULT_FIGURE_SIZE = (12, 4)
-DEFAULT_X_RANGE = (-2.0, 2.0)
-DEFAULT_Y_RANGE = (-1.0, 3.0)
+DEFAULT_PLOT_X_RANGE = (-2.0, 2.0)
+DEFAULT_PLOT_Y_RANGE = (-1.0, 3.0)
 DEFAULT_RESOLUTION = 200
 DEFAULT_BATCH_SIZE = 10000
 DEFAULT_CMAP = "viridis"
@@ -30,8 +31,8 @@ class MuellerBrownVisualizer:
 
     def plot_potential_surface(
         self,
-        x_range: tuple[float, float] = DEFAULT_X_RANGE,
-        y_range: tuple[float, float] = DEFAULT_Y_RANGE,
+        x_range: tuple[float, float] = DEFAULT_PLOT_X_RANGE,
+        y_range: tuple[float, float] = DEFAULT_PLOT_Y_RANGE,
         resolution: int = DEFAULT_RESOLUTION,
         ax: Axes | None = None,
         cmap: str = DEFAULT_CMAP,

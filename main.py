@@ -259,7 +259,6 @@ def demo_potential_features():
     print(f"Energies at test coordinates: {energies}")
 
     # Test force calculation
-    test_coords.requires_grad_(True)
     forces = potential.force(test_coords)
     print(f"Forces at test coordinates: {forces}")
 
@@ -376,6 +375,9 @@ def main():
         default=None,
         help="List of observables to save and plot. Available: positions, velocities, forces, potential_energy. Default: all observables",
     )
+    parser.add_argument(
+        "--device", type=str, default="cpu", help="Torch device for the simulation (e.g. cpu, cuda)"
+    )
 
     args = parser.parse_args()
 
@@ -399,6 +401,7 @@ def main():
             n_transient=args.n_transient,
             seed=args.seed,
             save_every=args.save_every,
+            device=args.device,
             observables=args.observables,
         )
 
@@ -424,6 +427,7 @@ def main():
             n_transient=args.n_transient,
             seed=args.seed,
             save_every=args.save_every,
+            device=args.device,
             observables=args.observables,
         )
 

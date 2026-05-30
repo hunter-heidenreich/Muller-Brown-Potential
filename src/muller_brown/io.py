@@ -184,19 +184,17 @@ def load_simulation_data(filepath: str | Path) -> dict:
 def load_artifact_data(artifact_dir: str | Path) -> dict | None:
     """Load simulation data from an artifact directory.
 
-    Searches for .h5 files in the directory and loads the first one found.
-    Returns None if no valid data file is found.
+    Loads the first .h5 file by name (so batch directories like simulation_000.h5
+    load deterministically). Returns None if no .h5 file is found.
     """
     artifact_path = Path(artifact_dir)
     if not artifact_path.exists() or not artifact_path.is_dir():
         raise ValueError(f"Artifact directory does not exist: {artifact_path}")
 
-    # Find .h5 files in the directory
-    h5_files = list(artifact_path.glob("*.h5"))
+    h5_files = sorted(artifact_path.glob("*.h5"))
     if not h5_files:
         return None
 
-    # Load the first .h5 file found (you might want to make this smarter)
     return load_simulation_data(h5_files[0])
 
 

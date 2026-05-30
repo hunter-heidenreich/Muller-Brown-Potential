@@ -94,6 +94,7 @@ def create_experiment_config(
     save_every: int = 100,
     n_transient: int = 0,
     seed: int = 42,
+    device: str = "cpu",
     initial_position_method: str = "random",
     observables: list[str] | None = None,
     **kwargs,
@@ -130,6 +131,7 @@ def create_experiment_config(
             "save_every": save_every,
             "n_transient": n_transient,
             "seed": seed,
+            "device": device,
         },
         "initial_conditions": {
             "method": initial_position_method,

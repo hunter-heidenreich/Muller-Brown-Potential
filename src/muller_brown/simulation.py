@@ -7,9 +7,9 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from src.muller_brown.potential import MuellerBrownPotential
-from src.muller_brown.data import convert_to_tensor
-from src.muller_brown.constants import DEFAULT_DEVICE, DEFAULT_DTYPE
+from muller_brown.potential import MuellerBrownPotential
+from muller_brown.data import convert_to_tensor
+from muller_brown.constants import DEFAULT_DEVICE, DEFAULT_DTYPE
 
 
 class LangevinSimulator:

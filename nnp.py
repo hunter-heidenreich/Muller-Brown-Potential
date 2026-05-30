@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.muller_brown import MuellerBrownPotential
+from muller_brown import MuellerBrownPotential
 
 # --- 1. The Student Model (Simple MLP) ---
 class SimpleNNP(nn.Module):

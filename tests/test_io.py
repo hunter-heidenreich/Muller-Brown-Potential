@@ -4,7 +4,7 @@ subset chosen at save time."""
 import numpy as np
 import torch
 
-from src.muller_brown import (
+from muller_brown import (
     MuellerBrownPotential,
     LangevinSimulator,
     save_simulation_data,

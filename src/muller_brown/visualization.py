@@ -1,4 +1,4 @@
-"""Modern visualization tools for the Müller-Brown potential and simulation data."""
+"""Visualization tools for the Müller-Brown potential and simulation data."""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,8 +7,8 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from pathlib import Path
 
-from src.muller_brown.potential import MuellerBrownPotential
-from src.muller_brown.data import convert_to_tensor
+from muller_brown.potential import MuellerBrownPotential
+from muller_brown.data import convert_to_tensor
 
 
 # Default plotting constants (wider than the simulation ranges in constants.py,
@@ -23,7 +23,7 @@ DEFAULT_LEVELS = 24
 
 
 class MuellerBrownVisualizer:
-    """Modern visualization tools for Müller-Brown potential and simulation observables."""
+    """Visualization tools for the Müller-Brown potential and simulation observables."""
 
     def __init__(self, potential: MuellerBrownPotential):
         """Initialize the visualizer."""

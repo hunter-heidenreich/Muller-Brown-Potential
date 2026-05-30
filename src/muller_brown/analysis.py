@@ -4,7 +4,7 @@ import numpy as np
 
 
 def calculate_trajectory_statistics(data: dict) -> dict:
-    """Calculate comprehensive statistical properties from simulation data."""
+    """Calculate summary statistics (means, stds, extrema) from simulation data."""
     if "positions" not in data:
         raise ValueError("Positions data is required for trajectory statistics")
     

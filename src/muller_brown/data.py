@@ -4,7 +4,7 @@ import random
 import numpy as np
 import torch
 
-from src.muller_brown.constants import DEFAULT_DEVICE, DEFAULT_DTYPE
+from muller_brown.constants import DEFAULT_DEVICE, DEFAULT_DTYPE
 
 
 def set_random_seed(seed: int) -> None:

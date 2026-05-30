@@ -9,7 +9,7 @@ PyTorch implementation of the Müller-Brown 2D potential energy surface with Lan
 This project uses `uv`. Run everything through it.
 
 ```bash
-uv sync                                          # install dependencies
+uv sync                                          # install dependencies + the package (editable)
 uv run python main.py --mode demo                # show potential info (minima, saddles, sample energies/forces)
 uv run python main.py --mode single --save-plots # one simulation -> new artifacts/<timestamp>/ dir
 uv run python main.py --mode batch --n-simulations 10 --save-plots
@@ -46,7 +46,7 @@ Things that take reading multiple files to see:
 - **`config.py`** produces the nested `simulation`/`initial_conditions`/`output` dict consumed everywhere; `create_experiment_config()` is the single source of defaults.
 
 ## Conventions
-- **Imports are absolute from the repo root** (`from src.muller_brown...`), so run all scripts from the project root, not from inside `src/`.
+- **Imports are package-absolute** (`from muller_brown import ...`); `uv sync` installs the package editable (src-layout, `src/muller_brown/`), so it resolves the same from scripts, tests, or a REPL. Run scripts from the project root so relative artifact paths (`artifacts/`) resolve.
 - **Default dtype is `torch.float64`, device CPU** (`constants.py`). Keep simulation code in double precision; scientific correctness and reproducibility come first.
 - Canonical potential parameters and critical-point locations live in `constants.py` / `potential.py` — reuse them, don't re-hardcode.
 - Type hints: builtin generics and `|` only — `list`/`dict`/`tuple`/`set`, `X | None` (not `Optional`), `A | B` (not `Union`). `_` prefix for private members, `ALL_CAPS` for constants.

@@ -151,3 +151,28 @@ def test_free_particle_velocity_autocorrelation(gamma):
     above_noise = vacf > 0.1
     fitted_rate = -np.polyfit(lags[above_noise], np.log(vacf[above_noise]), 1)[0]
     assert abs(fitted_rate - gamma) / gamma < 0.05
+
+
+@pytest.mark.statistical
+def test_kinetic_temperature_converges_second_order():
+    """On a stiff harmonic the kinetic-temperature bias scales as O(dt^2). Fit
+    the convergence order and assert it is near 2. See convergence_study.py for
+    the documented plot, including Müller-Brown."""
+    temperature, k = 5.0, 25.0
+    timesteps = np.array([0.02, 0.03, 0.04, 0.05])
+
+    def kinetic_bias(dt: float) -> float:
+        values = []
+        for seed in range(6):
+            set_random_seed(seed)
+            simulator = LangevinSimulator(HarmonicPotential(k), temperature=temperature, friction=1.0, dt=dt)
+            results = simulator.simulate(
+                np.zeros((500, 2)), n_steps=20000, save_every=10,
+                observables=["positions", "velocities"],
+            )
+            values.append((results["velocities"][len(results["velocities"]) // 4:] ** 2).mean())
+        return abs(np.mean(values) - temperature)
+
+    bias = np.array([kinetic_bias(dt) for dt in timesteps])
+    order = np.polyfit(np.log(timesteps), np.log(bias), 1)[0]
+    assert 1.5 < order < 2.6, f"kinetic-temperature convergence order {order:.2f} is not ~2"

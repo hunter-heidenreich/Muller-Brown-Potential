@@ -16,5 +16,6 @@ wheels/
 # Artifact directories (generated data and plots)
 artifacts/
 
-# Generated verification plot
+# Generated verification plots
 langevin_verification.png
+convergence.png

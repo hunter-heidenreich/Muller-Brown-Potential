@@ -148,7 +148,7 @@ class PerformanceBenchmark:
     def create_plots(self, output_dir: str = "artifacts/benchmark_plots") -> None:
         """Create performance analysis plots."""
         output_path = Path(output_dir)
-        output_path.mkdir(exist_ok=True)
+        output_path.mkdir(parents=True, exist_ok=True)
 
         # Separate analytical and autograd results
         analytical = [r for r in self.results if r.method == "analytical"]
@@ -273,6 +273,7 @@ class PerformanceBenchmark:
 
     def save_results(self, filename: str = "artifacts/benchmark_results.json"):
         """Save benchmark results to JSON."""
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
         data = [asdict(result) for result in self.results]
         with open(filename, "w") as f:
             json.dump(data, f, indent=2)
@@ -342,8 +343,6 @@ def main():
     # Save results and print summary
     benchmark.save_results()
     benchmark.print_summary()
-
-    print("\n📊 Visualization plots created in 'benchmark_plots/' directory")
 
 
 if __name__ == "__main__":

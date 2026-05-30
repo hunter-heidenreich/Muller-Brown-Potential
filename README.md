@@ -205,6 +205,13 @@ The implementation is optimized for:
 - **Numerical Stability**: Double precision by default
 - **Memory Management**: Configurable save frequency for long simulations
 
+Each step is vectorized over particles, so for small particle counts the wall
+time is dominated by fixed per-step overhead (the force call and noise draw): a
+1-particle step and a 100-particle step take roughly the same time (~40 vs
+~50 µs). For sampling throughput, prefer an ensemble (`--n-particles 100+`) over
+many separate single-particle runs — that is ~100× the sampling for ~25% more
+wall time.
+
 ## Tips for Research Use
 
 - **Temperature effects**: Lower temperatures (T ~ 5-10) emphasize rare events; higher temperatures (T ~ 20-30) increase barrier crossing

@@ -39,7 +39,6 @@ class MuellerBrownVisualizer:
         levels: int = DEFAULT_LEVELS,
     ) -> tuple[Figure, Axes]:
         """Plot the Müller-Brown potential energy surface with critical points."""
-        # Input validation
         if resolution <= 0:
             raise ValueError(f"resolution must be positive, got {resolution}")
         if x_range[0] >= x_range[1]:
@@ -49,51 +48,35 @@ class MuellerBrownVisualizer:
         if levels <= 0:
             raise ValueError(f"levels must be positive, got {levels}")
 
-        # Create coordinate grid
         x = np.linspace(x_range[0], x_range[1], resolution)
         y = np.linspace(y_range[0], y_range[1], resolution)
         X, Y = np.meshgrid(x, y)
 
-        # Compute potential on grid in batches
         V = self._compute_potential_grid(X, Y)
-
-        # Apply log transformation for better visualization
         V_log = self._apply_log_transform(V)
 
-        # Create plot
         fig, ax = self._setup_figure_and_axes(ax, (10, 8))
 
-        # Plot contours with improved styling
         v_min, v_max = V_log.min(), V_log.max()
         contour_levels = np.linspace(v_min, v_max, levels)
-
         contour = ax.contourf(
             X, Y, V_log, levels=contour_levels, cmap=cmap, extend="both"
         )
-
-        # Add contour lines for better definition
         ax.contour(
             X, Y, V_log, levels=contour_levels[::3], colors='black', alpha=0.3, linewidths=0.5
         )
 
-        # Add colorbar with improved styling
         cbar = fig.colorbar(contour, ax=ax, shrink=0.8, aspect=30)
         cbar.set_label(r"$\log(V - V_{\min})$", rotation=270, labelpad=20, fontsize=12)
         cbar.ax.tick_params(labelsize=10)
 
-        # Add critical points
         self._add_critical_points(ax)
 
-        # Labels and title with improved styling
         ax.set_xlabel(r"$x$", fontsize=14, fontweight='bold')
         ax.set_ylabel(r"$y$", fontsize=14, fontweight='bold')
         ax.set_title("Müller-Brown Potential Energy Surface", fontsize=16, fontweight='bold', pad=20)
-        
-        # Improve grid and axis styling
         ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
         ax.tick_params(labelsize=11)
-        
-        # Set aspect ratio to be equal for better visualization
         ax.set_aspect('equal', adjustable='box')
 
         return fig, ax
@@ -117,11 +100,9 @@ class MuellerBrownVisualizer:
         positions_raw = data["positions"]  # (n_steps, n_particles, 2)
         
         if sample_idx is not None:
-            # Single particle mode
             positions = positions_raw[:, sample_idx, :]  # (n_steps, 2)
             title_suffix = f" (Particle {sample_idx})"
         else:
-            # All particles mode - flatten across particles and time steps
             positions = positions_raw.reshape(-1, 2)  # (n_steps * n_particles, 2)
             title_suffix = ""
 
@@ -132,7 +113,6 @@ class MuellerBrownVisualizer:
         ax_y = fig.add_subplot(gs[1, 0])
         ax_2d = fig.add_subplot(gs[:, 1])
 
-        # Filter out NaN values before creating histograms
         valid_mask = ~np.any(np.isnan(positions), axis=1)
         valid_positions = positions[valid_mask]
         if len(valid_positions) == 0:
@@ -141,7 +121,6 @@ class MuellerBrownVisualizer:
         if n_invalid > 0:
             print(f"Warning: Filtered out {n_invalid} data points with NaN values")
 
-        # X position density
         ax_x.hist(
             valid_positions[:, 0],
             bins=50,
@@ -155,7 +134,6 @@ class MuellerBrownVisualizer:
         ax_x.set_title(f"X Position Density{title_suffix}")
         ax_x.grid(True, alpha=0.3)
 
-        # Y position density
         ax_y.hist(
             valid_positions[:, 1],
             bins=50,
@@ -214,16 +192,13 @@ class MuellerBrownVisualizer:
         velocities_raw = data["velocities"]  # (n_steps, n_particles, 2)
         
         if sample_idx is not None:
-            # Single particle mode
             velocities = velocities_raw[:, sample_idx, :]  # (n_steps, 2)
             title_suffix = f" (Particle {sample_idx})"
         else:
-            # All particles mode - flatten across particles and time steps
             velocities = velocities_raw.reshape(-1, 2)  # (n_steps * n_particles, 2)
             n_particles = velocities_raw.shape[1]
             title_suffix = f" (All {n_particles} particles)"
         
-        # Filter out NaN values before creating histograms
         valid_mask = ~np.any(np.isnan(velocities), axis=1)
         valid_velocities = velocities[valid_mask]
         
@@ -238,7 +213,6 @@ class MuellerBrownVisualizer:
 
         fig, axes = plt.subplots(1, 3, figsize=DEFAULT_FIGURE_SIZE)
 
-        # X velocity component
         axes[0].hist(
             valid_velocities[:, 0],
             bins=50,
@@ -252,7 +226,6 @@ class MuellerBrownVisualizer:
         axes[0].set_title(f"X Velocity Distribution{title_suffix}")
         axes[0].grid(True, alpha=0.3)
 
-        # Y velocity component
         axes[1].hist(
             valid_velocities[:, 1],
             bins=50,
@@ -266,7 +239,6 @@ class MuellerBrownVisualizer:
         axes[1].set_title(f"Y Velocity Distribution{title_suffix}")
         axes[1].grid(True, alpha=0.3)
 
-        # Velocity magnitude
         axes[2].hist(
             vel_magnitude,
             bins=50,
@@ -302,16 +274,13 @@ class MuellerBrownVisualizer:
         forces_raw = data["forces"]  # (n_steps, n_particles, 2)
         
         if sample_idx is not None:
-            # Single particle mode
             forces = forces_raw[:, sample_idx, :]  # (n_steps, 2)
             title_suffix = f" (Particle {sample_idx})"
         else:
-            # All particles mode - flatten across particles and time steps
             forces = forces_raw.reshape(-1, 2)  # (n_steps * n_particles, 2)
             n_particles = forces_raw.shape[1]
             title_suffix = f" (All {n_particles} particles)"
         
-        # Filter out NaN values before creating histograms
         valid_mask = ~np.any(np.isnan(forces), axis=1)
         valid_forces = forces[valid_mask]
         
@@ -326,7 +295,6 @@ class MuellerBrownVisualizer:
 
         fig, axes = plt.subplots(1, 3, figsize=DEFAULT_FIGURE_SIZE)
 
-        # X force component
         axes[0].hist(
             valid_forces[:, 0],
             bins=50,
@@ -340,7 +308,6 @@ class MuellerBrownVisualizer:
         axes[0].set_title(f"X Force Distribution{title_suffix}")
         axes[0].grid(True, alpha=0.3)
 
-        # Y force component
         axes[1].hist(
             valid_forces[:, 1],
             bins=50,
@@ -354,7 +321,6 @@ class MuellerBrownVisualizer:
         axes[1].set_title(f"Y Force Distribution{title_suffix}")
         axes[1].grid(True, alpha=0.3)
 
-        # Force magnitude
         axes[2].hist(
             force_magnitude,
             bins=50,
@@ -390,16 +356,13 @@ class MuellerBrownVisualizer:
         energies_raw = data["potential_energy"]  # (n_steps, n_particles)
         
         if sample_idx is not None:
-            # Single particle mode
             energies = energies_raw[:, sample_idx]  # (n_steps,)
             title_suffix = f" (Particle {sample_idx})"
         else:
-            # All particles mode - flatten across particles and time steps
             energies = energies_raw.flatten()  # (n_steps * n_particles,)
             n_particles = energies_raw.shape[1]
             title_suffix = f" (All {n_particles} particles)"
 
-        # Filter out NaN values before creating histogram
         valid_energies = energies[~np.isnan(energies)]
         
         if len(valid_energies) == 0:
@@ -437,7 +400,6 @@ class MuellerBrownVisualizer:
         Raises:
             ValueError: If positions data is not available in any simulation
         """
-        # Check if positions are available in all results
         missing_positions = [i for i, result in enumerate(all_results) if "positions" not in result]
         if missing_positions:
             raise ValueError(
@@ -445,7 +407,6 @@ class MuellerBrownVisualizer:
                 "was 'positions' included in saved observables?"
             )
         
-        # Collect all positions from all simulations
         all_positions = []
         total_particles = 0
         total_simulations = len(all_results)
@@ -455,10 +416,8 @@ class MuellerBrownVisualizer:
             all_positions.append(positions.reshape(-1, 2))  # Flatten to (n_steps * n_particles, 2)
             total_particles += positions.shape[1]
         
-        # Concatenate all position data
         positions_combined = np.concatenate(all_positions, axis=0)  # (total_data_points, 2)
         
-        # Filter out NaN values before creating histograms
         valid_mask = ~np.any(np.isnan(positions_combined), axis=1)
         valid_positions_combined = positions_combined[valid_mask]
         
@@ -476,14 +435,12 @@ class MuellerBrownVisualizer:
         fig = plt.figure(figsize=(16, 8))
         gs = fig.add_gridspec(2, 4, width_ratios=[1, 1, 1, 1], height_ratios=[1, 1])
         
-        # Define subplot positions
         ax_x_linear = fig.add_subplot(gs[0, 0])      # (1,1): Linear x density
         ax_y_linear = fig.add_subplot(gs[0, 1])      # (1,2): Linear y density  
         ax_x_log = fig.add_subplot(gs[1, 0])         # (2,1): Log x density
         ax_y_log = fig.add_subplot(gs[1, 1])         # (2,2): Log y density
         ax_2d = fig.add_subplot(gs[:, 2:])           # (1-2,3-4): 2D histogram
 
-        # Calculate histograms for 1D distributions
         x_counts, x_edges = np.histogram(valid_positions_combined[:, 0], bins=50, density=True)
         y_counts, y_edges = np.histogram(valid_positions_combined[:, 1], bins=50, density=True)
         
@@ -569,20 +526,17 @@ class MuellerBrownVisualizer:
             alpha=0.8,
         )
 
-        # Add critical points to 2D plot
         self._add_critical_points(ax_2d)
 
         ax_2d.set_xlabel("x position")
         ax_2d.set_ylabel("y position")
         ax_2d.set_title(f"2D Position Distribution{title_suffix}\n(-Log Scale)")
 
-        # Add colorbar for 2D plot
         cbar = fig.colorbar(im, ax=ax_2d, shrink=0.6)
         cbar.set_label("-Log(Density)", rotation=270, labelpad=15)
 
         plt.tight_layout()
         
-        # Return axes in a format compatible with existing code
         axes = np.array([ax_x_linear, ax_y_linear, ax_x_log, ax_y_log, ax_2d])
         return fig, axes
 
@@ -599,10 +553,8 @@ class MuellerBrownVisualizer:
             
         positions = data["positions"][:, sample_idx, :]  # (n_steps, 2)
 
-        # Create a single plot for trajectory on potential surface
         fig, ax = plt.subplots(figsize=(8, 6))
 
-        # Plot trajectory on potential surface
         _, _ = self.plot_potential_surface(ax=ax)
         ax.plot(positions[:, 0], positions[:, 1], "white", linewidth=2.5, alpha=0.9, label="Trajectory")
         ax.plot(
@@ -612,7 +564,6 @@ class MuellerBrownVisualizer:
             positions[-1, 0], positions[-1, 1], "rs", markersize=10, label="End", zorder=12
         )
         
-        # Improve legend styling
         ax.legend(
             loc="upper right",
             frameon=True,
@@ -648,7 +599,6 @@ class MuellerBrownVisualizer:
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-        # X position vs time
         axes[0].plot(time_points, positions[:, 0], "b-", linewidth=1.5)
         axes[0].set_xlabel("Time", fontsize=12)
         axes[0].set_ylabel("x position", fontsize=12)
@@ -656,7 +606,6 @@ class MuellerBrownVisualizer:
         axes[0].grid(True, alpha=0.3)
         axes[0].tick_params(labelsize=10)
 
-        # Y position vs time
         axes[1].plot(time_points, positions[:, 1], "r-", linewidth=1.5)
         axes[1].set_xlabel("Time", fontsize=12)
         axes[1].set_ylabel("y position", fontsize=12)
@@ -732,7 +681,6 @@ class MuellerBrownVisualizer:
         ax_y_time = fig.add_subplot(gs[1, 0])
         ax_pes = fig.add_subplot(gs[:, 1])
         
-        # Set up the potential energy surface plot
         self.plot_potential_surface(ax=ax_pes)
         
         # Initialize time series plots
@@ -826,13 +774,11 @@ class MuellerBrownVisualizer:
             
             return x_line, y_line, trajectory_line, current_pos, start_pos
         
-        # Create animation
         anim = FuncAnimation(
             fig, animate, frames=len(positions), 
             interval=1000/frames_per_second, blit=False, repeat=True
         )
         
-        # Save animation
         if output_path is None:
             output_path = "trajectory_animation.mp4"
         
@@ -890,21 +836,18 @@ class MuellerBrownVisualizer:
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
-        # X velocity vs time
         axes[0].plot(time_points, velocities[:, 0], "b-", linewidth=1)
         axes[0].set_xlabel("Time")
         axes[0].set_ylabel("x velocity")
         axes[0].set_title("X Velocity vs Time")
         axes[0].grid(True, alpha=0.3)
 
-        # Y velocity vs time
         axes[1].plot(time_points, velocities[:, 1], "r-", linewidth=1)
         axes[1].set_xlabel("Time")
         axes[1].set_ylabel("y velocity")
         axes[1].set_title("Y Velocity vs Time")
         axes[1].grid(True, alpha=0.3)
 
-        # Velocity magnitude vs time
         axes[2].plot(time_points, velocity_magnitude, "g-", linewidth=1)
         axes[2].set_xlabel("Time")
         axes[2].set_ylabel("velocity magnitude")
@@ -937,21 +880,18 @@ class MuellerBrownVisualizer:
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
-        # X force vs time
         axes[0].plot(time_points, forces[:, 0], "b-", linewidth=1)
         axes[0].set_xlabel("Time")
         axes[0].set_ylabel("x force")
         axes[0].set_title("X Force vs Time")
         axes[0].grid(True, alpha=0.3)
 
-        # Y force vs time
         axes[1].plot(time_points, forces[:, 1], "r-", linewidth=1)
         axes[1].set_xlabel("Time")
         axes[1].set_ylabel("y force")
         axes[1].set_title("Y Force vs Time")
         axes[1].grid(True, alpha=0.3)
 
-        # Force magnitude vs time
         axes[2].plot(time_points, force_magnitude, "g-", linewidth=1)
         axes[2].set_xlabel("Time")
         axes[2].set_ylabel("force magnitude")
@@ -991,7 +931,6 @@ class MuellerBrownVisualizer:
 
         return fig, ax
 
-    # Helper methods
     def _compute_potential_grid(self, X: np.ndarray, Y: np.ndarray) -> np.ndarray:
         """Compute potential energy on a coordinate grid using batched processing."""
         coordinates = convert_to_tensor(
@@ -1025,7 +964,6 @@ class MuellerBrownVisualizer:
 
     def _add_critical_points(self, ax: Axes) -> None:
         """Add minima and saddle points to the plot with clear annotations."""
-        # Plot minima with consistent styling
         minima = self.potential.get_minima()
         for i, (x, y) in enumerate(minima):
             ax.plot(
@@ -1039,7 +977,6 @@ class MuellerBrownVisualizer:
                 label="Minima" if i == 0 else "",
                 zorder=10,
             )
-            # Add text labels with better positioning and styling
             ax.annotate(
                 f"M{chr(65 + i)}",
                 (x, y),
@@ -1057,7 +994,6 @@ class MuellerBrownVisualizer:
                 zorder=11,
             )
 
-        # Plot saddle points with distinct styling
         saddles = self.potential.get_saddle_points()
         for i, (x, y) in enumerate(saddles):
             ax.plot(
@@ -1071,7 +1007,6 @@ class MuellerBrownVisualizer:
                 label="Saddle Points" if i == 0 else "",
                 zorder=10,
             )
-            # Add text labels with better positioning and styling
             ax.annotate(
                 f"S{i + 1}",
                 (x, y),
@@ -1089,12 +1024,10 @@ class MuellerBrownVisualizer:
                 zorder=11,
             )
 
-        # Add a clean legend for critical points
         handles, labels = ax.get_legend_handles_labels()
         critical_handles = []
         critical_labels = []
         
-        # Find the handles for minima and saddle points
         for handle, label in zip(handles, labels):
             if label in ["Minima", "Saddle Points"]:
                 critical_handles.append(handle)

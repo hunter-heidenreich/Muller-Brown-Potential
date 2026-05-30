@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 from dataclasses import dataclass, asdict
-from typing import List
 from src.muller_brown import MuellerBrownPotential
 
 
@@ -31,7 +30,7 @@ class PerformanceBenchmark:
     def __init__(self, device: str = "cpu", dtype: torch.dtype = torch.float64):
         self.device = device
         self.dtype = dtype
-        self.results: List[BenchmarkResult] = []
+        self.results: list[BenchmarkResult] = []
 
         # Initialize potentials
         self.potential_analytical = MuellerBrownPotential(
@@ -149,7 +148,7 @@ class PerformanceBenchmark:
     def create_plots(self, output_dir: str = "artifacts/benchmark_plots") -> None:
         """Create performance analysis plots."""
         output_path = Path(output_dir)
-        output_path.mkdir(exist_ok=True)
+        output_path.mkdir(parents=True, exist_ok=True)
 
         # Separate analytical and autograd results
         analytical = [r for r in self.results if r.method == "analytical"]
@@ -165,7 +164,7 @@ class PerformanceBenchmark:
         print(f"📊 Plots saved to {output_path}")
 
     def _plot_throughput_analysis(
-        self, analytical: List, autograd: List, output_path: Path
+        self, analytical: list[BenchmarkResult], autograd: list[BenchmarkResult], output_path: Path
     ):
         """Plot throughput vs problem size."""
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
@@ -231,7 +230,7 @@ class PerformanceBenchmark:
         plt.close()
 
     def _plot_time_per_particle(
-        self, analytical: List, autograd: List, output_path: Path
+        self, analytical: list[BenchmarkResult], autograd: list[BenchmarkResult], output_path: Path
     ):
         """Plot time per particle vs problem size."""
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
@@ -274,6 +273,7 @@ class PerformanceBenchmark:
 
     def save_results(self, filename: str = "artifacts/benchmark_results.json"):
         """Save benchmark results to JSON."""
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
         data = [asdict(result) for result in self.results]
         with open(filename, "w") as f:
             json.dump(data, f, indent=2)
@@ -343,8 +343,6 @@ def main():
     # Save results and print summary
     benchmark.save_results()
     benchmark.print_summary()
-
-    print("\n📊 Visualization plots created in 'benchmark_plots/' directory")
 
 
 if __name__ == "__main__":

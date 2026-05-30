@@ -10,7 +10,7 @@ from src.muller_brown.constants import (
 from src.muller_brown.io import _validate_positive_integer
 
 # Default observables to save and plot
-DEFAULT_OBSERVABLES = ["positions"]
+DEFAULT_OBSERVABLES = ["positions", "velocities", "forces", "potential_energy"]
 AVAILABLE_OBSERVABLES = ["positions", "velocities", "forces", "potential_energy"]
 
 
@@ -94,10 +94,11 @@ def create_experiment_config(
     save_every: int = 100,
     n_transient: int = 0,
     seed: int = 42,
+    device: str = "cpu",
     initial_position_method: str = "random",
     observables: list[str] | None = None,
     **kwargs,
-) -> dict[str, any]:
+) -> dict:
     """Create a standardized configuration dictionary for simulation experiments."""
     # Validate inputs
     _validate_positive_integer(n_particles, "n_particles")
@@ -130,6 +131,7 @@ def create_experiment_config(
             "save_every": save_every,
             "n_transient": n_transient,
             "seed": seed,
+            "device": device,
         },
         "initial_conditions": {
             "method": initial_position_method,

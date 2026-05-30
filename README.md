@@ -116,6 +116,29 @@ uv run python manage_artifacts.py clean
 uv run python manage_artifacts.py clean --delete
 ```
 
+## Testing and Validation
+
+The test suite uses `pytest`:
+
+```bash
+uv run --extra dev pytest                       # full suite
+uv run --extra dev pytest -m "not statistical"  # fast deterministic tests only
+```
+
+It has two tiers:
+
+- **Deterministic** tests check exact properties: the potential's critical points (Hessian signatures), forces against autograd, energy conservation in the frictionless (velocity-Verlet) limit, seed reproducibility, HDF5 round-trips, and array shape/dtype invariants.
+- **Statistical** tests (marked `statistical`) check that the thermostat samples the canonical distribution: equipartition, harmonic-oscillator distributions, the Müller-Brown mean energy against a grid-integrated Boltzmann average, the free-particle velocity autocorrelation, and the timestep-convergence order. They are seeded, with tolerances set above the sampling error.
+
+Two standalone scripts produce validation plots:
+
+```bash
+uv run python verify_langevin.py     # sampled vs analytic harmonic-oscillator distributions
+uv run python convergence_study.py   # kinetic-temperature bias vs timestep
+```
+
+> **Note on accuracy.** BAOAB samples configurational averages accurately (exactly for a harmonic oscillator), but the kinetic temperature carries an O(dt²) bias that grows with curvature — about 4% on the Müller-Brown surface at dt=0.01. It shrinks as the timestep is reduced; `convergence_study.py` quantifies this.
+
 ## Data Format
 
 Simulations save all observables in HDF5 format:
@@ -131,7 +154,7 @@ Simulations save all observables in HDF5 format:
 ```
 muller_brown/
 ├── src/muller_brown/        # Core package
-│   ├── potential.py         # Müller-Brown potential with JIT compilation
+│   ├── potential.py         # Müller-Brown potential (torch.compile force)
 │   ├── simulation.py        # Langevin dynamics simulator
 │   ├── visualization.py     # Comprehensive plotting suite
 │   ├── io.py               # HDF5 data I/O operations
@@ -139,9 +162,12 @@ muller_brown/
 │   ├── analysis.py         # Statistical analysis functions
 │   ├── config.py           # Experiment configuration
 │   └── constants.py        # Physical and computational constants
+├── tests/                  # pytest suite (deterministic + statistical)
 ├── main.py                 # Command-line interface
 ├── benchmark.py            # Performance benchmarking
 ├── example.py              # Simple usage example
+├── verify_langevin.py      # BAOAB sampling vs analytic harmonic oscillator
+├── convergence_study.py    # Timestep-convergence study
 ├── manage_artifacts.py     # Artifact management utility
 ├── pyproject.toml         # Project dependencies and metadata
 ├── LICENSE                # MIT License
@@ -152,13 +178,13 @@ muller_brown/
 
 ### `MuellerBrownPotential`
 
-- JIT-compiled PyTorch module for efficient evaluation
+- `torch.compile`-accelerated force evaluation
 - Automatic gradient computation for forces
 - Built-in critical point locations (3 minima, 2 saddle points)
 
 ### `LangevinSimulator`
 
-- Velocity-Verlet integration with proper Langevin thermostat
+- BAOAB integration (Leimkuhler & Matthews, 2013) for accurate canonical sampling
 - Tracks all observables (positions, velocities, forces, energies)
 - Configurable temperature, friction, and time step
 
@@ -173,11 +199,18 @@ muller_brown/
 
 The implementation is optimized for:
 
-- **JIT Compilation**: PyTorch JIT for fast potential and force evaluation
+- **Compiled forces**: `torch.compile` (shape-dynamic) for fast force evaluation
 - **GPU Support**: All tensors support CUDA acceleration
 - **Efficient Storage**: HDF5 with compression for large datasets
 - **Numerical Stability**: Double precision by default
 - **Memory Management**: Configurable save frequency for long simulations
+
+Each step is vectorized over particles, so for small particle counts the wall
+time is dominated by fixed per-step overhead (the force call and noise draw): a
+1-particle step and a 100-particle step take roughly the same time (~40 vs
+~50 µs). For sampling throughput, prefer an ensemble (`--n-particles 100+`) over
+many separate single-particle runs — that is ~100× the sampling for ~25% more
+wall time.
 
 ## Tips for Research Use
 

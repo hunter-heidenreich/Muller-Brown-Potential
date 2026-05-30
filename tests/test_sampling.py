@@ -125,3 +125,29 @@ def test_muller_brown_samples_boltzmann_distribution():
     )
     energies = results["potential_energy"][len(results["potential_energy"]) // 2:].reshape(-1)
     assert abs(energies.mean() - reference) / abs(reference) < 0.02
+
+
+@pytest.mark.statistical
+@pytest.mark.parametrize("gamma", [1.0, 2.0])
+def test_free_particle_velocity_autocorrelation(gamma):
+    """A free particle's velocity autocorrelation decays as exp(-gamma*t),
+    isolating the O-step friction constant c1 = exp(-gamma*dt)."""
+    temperature, dt, save_every = 5.0, 0.01, 2
+    set_random_seed(0)
+    simulator = LangevinSimulator(FreeParticle(), temperature=temperature, friction=gamma, dt=dt)
+    n_particles = 500
+    v0 = np.sqrt(temperature) * np.random.randn(n_particles, 2)  # Maxwell-Boltzmann start
+    results = simulator.simulate(
+        np.zeros((n_particles, 2)), n_steps=4000, save_every=save_every,
+        initial_velocities=v0, observables=["positions", "velocities"],
+    )
+    velocities = results["velocities"]
+    n_frames, max_lag = velocities.shape[0], 80
+    vacf = np.array([(velocities[: n_frames - k] * velocities[k:]).mean() for k in range(max_lag)])
+    vacf /= vacf[0]
+    lags = np.arange(max_lag) * dt * save_every
+
+    assert np.max(np.abs(vacf - np.exp(-gamma * lags))) < 0.03
+    above_noise = vacf > 0.1
+    fitted_rate = -np.polyfit(lags[above_noise], np.log(vacf[above_noise]), 1)[0]
+    assert abs(fitted_rate - gamma) / gamma < 0.05

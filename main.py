@@ -128,263 +128,119 @@ def _save_plot(fig, output_dir: Path, filename: str, dpi: int = 300):
     plt.close(fig)
 
 
-def create_visualizations(results: dict, output_dir: str | Path = "plots", save_animation: bool = False):
-    """Create and save all visualizations for simulation results."""
+def _try_save_plot(plot_fn, output_path: Path, filename: str, enabled: bool = True):
+    """Render a plot and save it, skipping (with a message) on missing data."""
+    if not enabled:
+        return
+    try:
+        fig = plot_fn()[0]
+        _save_plot(fig, output_path, filename)
+    except ValueError as e:
+        print(f"Skipping {filename}: {e}")
+
+
+def _save_trajectory_animation(
+    visualizer: MuellerBrownVisualizer, result: dict, output_path: Path, desired_duration: int
+):
+    """Render the animated trajectory for one result at the target duration (seconds)."""
+    try:
+        fps = 60
+        saved_frames = len(result["positions"])
+        frame_skip = max(1, saved_frames // (desired_duration * fps))
+        save_every = result.get("save_every", 1)
+        total_sim_steps = result.get("n_steps", saved_frames * save_every)
+        actual_frames = saved_frames // frame_skip
+        duration = actual_frames / fps
+
+        print(f"Simulation info: {total_sim_steps:,} total steps, save_every={save_every}")
+        print(f"Data available: {saved_frames:,} saved frames")
+        print(f"Animation settings: frame_skip={frame_skip}, will create {actual_frames:,} animation frames")
+        print(f"Expected video duration: {duration:.1f} seconds ({duration / 60:.1f} minutes)")
+
+        animation_path = visualizer.create_animated_trajectory(
+            result,
+            sample_idx=0,
+            output_path=output_path / "0_trajectory_animation.mp4",
+            frames_per_second=fps,
+            trail_length=150,
+            frame_skip=frame_skip,
+        )
+        print(f"Animation saved: {animation_path}")
+    except Exception as e:
+        print(f"Skipping trajectory animation: {e}")
+        print("Note: Animation requires matplotlib.animation and may need ffmpeg for MP4 or pillow for GIF")
+
+
+def _render_visualizations(
+    result: dict,
+    output_dir: str | Path,
+    save_animation: bool,
+    animation_duration: int = 60,
+    position_distribution_fn=None,
+):
+    """Render the full plot suite for one representative `result`.
+
+    `position_distribution_fn(visualizer)` overrides how the position
+    distribution figure is produced; batch mode aggregates across all
+    simulations. Plots whose observables are absent are skipped.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    visualizer = _setup_visualizer(results["config"])
-    
-    # Get which observables are available
-    available_observables = [obs for obs in ["positions", "velocities", "forces", "potential_energy"] if obs in results]
-    print(f"Creating visualizations for available observables: {available_observables}")
+    visualizer = _setup_visualizer(result["config"])
+    available = [o for o in ("positions", "velocities", "forces", "potential_energy") if o in result]
+    print(f"Creating visualizations for available observables: {available}")
 
-    print("Creating potential surface plot...")
-    fig, ax = visualizer.plot_potential_surface()
-    _save_plot(fig, output_path, "potential_surface.png")
+    _save_plot(visualizer.plot_potential_surface()[0], output_path, "potential_surface.png")
 
-    print("Creating time-independent distribution plots...")
+    if position_distribution_fn is None:
+        def position_distribution_fn(viz):
+            return viz.plot_position_distributions(result)
+    _try_save_plot(lambda: position_distribution_fn(visualizer), output_path,
+                   "position_distributions.png", "positions" in result)
+    _try_save_plot(lambda: visualizer.plot_velocity_distributions(result), output_path,
+                   "velocity_distributions.png", "velocities" in result)
+    _try_save_plot(lambda: visualizer.plot_force_distributions(result), output_path,
+                   "force_distributions.png", "forces" in result)
+    _try_save_plot(lambda: visualizer.plot_energy_distribution(result), output_path,
+                   "energy_distribution.png", "potential_energy" in result)
 
-    # Position distributions - aggregate across all particles
-    if "positions" in results:
-        try:
-            fig, axes = visualizer.plot_position_distributions(results)
-            _save_plot(fig, output_path, "position_distributions.png")
-        except ValueError as e:
-            print(f"Skipping position distributions: {e}")
+    _try_save_plot(lambda: visualizer.plot_trajectory_on_potential(result, sample_idx=0), output_path,
+                   "0_trajectory_on_potential.png", "positions" in result)
+    _try_save_plot(lambda: visualizer.plot_position_time_series(result, sample_idx=0), output_path,
+                   "0_position_time_series.png", "positions" in result)
 
-    # Velocity distributions - aggregate across all particles
-    if "velocities" in results:
-        try:
-            fig, axes = visualizer.plot_velocity_distributions(results)
-            _save_plot(fig, output_path, "velocity_distributions.png")
-        except ValueError as e:
-            print(f"Skipping velocity distributions: {e}")
+    if save_animation and "positions" in result:
+        _save_trajectory_animation(visualizer, result, output_path, animation_duration)
 
-    # Force distributions - aggregate across all particles
-    if "forces" in results:
-        try:
-            fig, axes = visualizer.plot_force_distributions(results)
-            _save_plot(fig, output_path, "force_distributions.png")
-        except ValueError as e:
-            print(f"Skipping force distributions: {e}")
-
-    # Energy distribution - aggregate across all particles
-    if "potential_energy" in results:
-        try:
-            fig, ax = visualizer.plot_energy_distribution(results)
-            _save_plot(fig, output_path, "energy_distribution.png")
-        except ValueError as e:
-            print(f"Skipping energy distribution: {e}")
-
-    print("Creating time-dependent plots...")
-
-    # Trajectory on potential surface
-    if "positions" in results:
-        try:
-            fig, ax = visualizer.plot_trajectory_on_potential(results, sample_idx=0)
-            _save_plot(fig, output_path, "0_trajectory_on_potential.png")
-        except ValueError as e:
-            print(f"Skipping trajectory plot: {e}")
-
-    # Position time series
-    if "positions" in results:
-        try:
-            fig, axes = visualizer.plot_position_time_series(results, sample_idx=0)
-            _save_plot(fig, output_path, "0_position_time_series.png")
-        except ValueError as e:
-            print(f"Skipping position time series: {e}")
-
-    # Animated trajectory
-    if "positions" in results and save_animation:
-        try:
-            print("Creating animated trajectory...")
-            # Animation settings - modify these as needed:
-            fps = 60 
-            desired_duration = 60  # seconds
-            max_frames = desired_duration * fps  # 10800
-            frame_skip = max(1, len(results["positions"]) // max_frames)
-            
-            # Account for the save_every parameter in actual frame calculations
-            total_sim_steps = results.get("n_steps", len(results["positions"]) * results.get("save_every", 1))
-            save_every = results.get("save_every", 1)
-            saved_frames = len(results["positions"])
-            actual_frames = saved_frames // frame_skip
-            duration = actual_frames / fps
-            
-            print(f"Simulation info: {total_sim_steps:,} total steps, save_every={save_every}")
-            print(f"Data available: {saved_frames:,} saved frames")
-            print(f"Animation settings: frame_skip={frame_skip}, will create {actual_frames:,} animation frames")
-            print(f"Expected video duration: {duration:.1f} seconds ({duration/60:.1f} minutes)")
-            
-            animation_path = visualizer.create_animated_trajectory(
-                results, 
-                sample_idx=0,
-                output_path=output_path / "0_trajectory_animation.mp4",
-                frames_per_second=fps,
-                trail_length=150,
-                frame_skip=frame_skip
-            )
-            print(f"Animation saved: {animation_path}")
-        except Exception as e:
-            print(f"Skipping trajectory animation: {e}")
-            print("Note: Animation requires matplotlib.animation and may need ffmpeg for MP4 or pillow for GIF")
-
-    # Velocity time series
-    if "velocities" in results:
-        try:
-            fig, axes = visualizer.plot_velocity_time_series(results, sample_idx=0)
-            _save_plot(fig, output_path, "0_velocity_time_series.png")
-        except ValueError as e:
-            print(f"Skipping velocity time series: {e}")
-
-    # Force time series
-    if "forces" in results:
-        try:
-            fig, axes = visualizer.plot_force_time_series(results, sample_idx=0)
-            _save_plot(fig, output_path, "0_force_time_series.png")
-        except ValueError as e:
-            print(f"Skipping force time series: {e}")
-
-    # Energy vs time
-    if "potential_energy" in results:
-        try:
-            fig, ax = visualizer.plot_energy_vs_time(results, sample_idx=0)
-            _save_plot(fig, output_path, "0_energy_vs_time.png")
-        except ValueError as e:
-            print(f"Skipping energy time series: {e}")
+    _try_save_plot(lambda: visualizer.plot_velocity_time_series(result, sample_idx=0), output_path,
+                   "0_velocity_time_series.png", "velocities" in result)
+    _try_save_plot(lambda: visualizer.plot_force_time_series(result, sample_idx=0), output_path,
+                   "0_force_time_series.png", "forces" in result)
+    _try_save_plot(lambda: visualizer.plot_energy_vs_time(result, sample_idx=0), output_path,
+                   "0_energy_vs_time.png", "potential_energy" in result)
 
     print(f"All available plots saved to {output_path}")
 
 
+def create_visualizations(results: dict, output_dir: str | Path = "plots", save_animation: bool = False):
+    """Create and save all visualizations for a single simulation's results."""
+    _render_visualizations(results, output_dir, save_animation, animation_duration=60)
+
+
 def create_batch_visualizations(all_results: list, output_dir: str | Path = "plots", save_animation: bool = False):
-    """Create and save visualizations for batch simulation results."""
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+    """Create and save visualizations for batch results.
 
-    # Use the first result to set up visualizer
-    visualizer = _setup_visualizer(all_results[0]["config"])
-    
-    # Get which observables are available in the first result
-    available_observables = [obs for obs in ["positions", "velocities", "forces", "potential_energy"] if obs in all_results[0]]
-    print(f"Creating batch visualizations for available observables: {available_observables}")
-
-    # Plot potential surface
-    print("Creating potential surface plot...")
-    fig, ax = visualizer.plot_potential_surface()
-    _save_plot(fig, output_path, "potential_surface.png")
-
-    # For batch mode, create visualizations from the first simulation for time-dependent plots
-    print("Creating visualizations from first simulation...")
-
-    first_result = all_results[0]
-
-    # Position distributions - aggregate across ALL simulations and particles
-    if "positions" in first_result and all(("positions" in result) for result in all_results):
-        try:
-            print("Creating batch position distributions (aggregated across all simulations)...")
-            fig, axes = visualizer.plot_batch_position_distributions(all_results)
-            _save_plot(fig, output_path, "position_distributions.png")
-        except ValueError as e:
-            print(f"Skipping batch position distributions: {e}")
-
-    # Velocity distributions - from first simulation across all particles
-    if "velocities" in first_result:
-        try:
-            fig, axes = visualizer.plot_velocity_distributions(first_result)
-            _save_plot(fig, output_path, "velocity_distributions.png")
-        except ValueError as e:
-            print(f"Skipping velocity distributions: {e}")
-
-    # Force distributions - from first simulation across all particles
-    if "forces" in first_result:
-        try:
-            fig, axes = visualizer.plot_force_distributions(first_result)
-            _save_plot(fig, output_path, "force_distributions.png")
-        except ValueError as e:
-            print(f"Skipping force distributions: {e}")
-
-    # Energy distribution - from first simulation across all particles
-    if "potential_energy" in first_result:
-        try:
-            fig, ax = visualizer.plot_energy_distribution(first_result)
-            _save_plot(fig, output_path, "energy_distribution.png")
-        except ValueError as e:
-            print(f"Skipping energy distribution: {e}")
-
-    # Time-dependent plots from first simulation
-    if "positions" in first_result:
-        try:
-            fig, ax = visualizer.plot_trajectory_on_potential(first_result, sample_idx=0)
-            _save_plot(fig, output_path, "0_trajectory_on_potential.png")
-        except ValueError as e:
-            print(f"Skipping trajectory plot: {e}")
-
-    # Position time series from first simulation
-    if "positions" in first_result:
-        try:
-            fig, axes = visualizer.plot_position_time_series(first_result, sample_idx=0)
-            _save_plot(fig, output_path, "0_position_time_series.png")
-        except ValueError as e:
-            print(f"Skipping position time series: {e}")
-
-    # Animated trajectory from first simulation
-    if "positions" in first_result and save_animation:
-        try:
-            print("Creating animated trajectory from first simulation...")
-            # Animation settings - modify these as needed:
-            fps = 60
-            desired_duration = 90  # seconds - set to 90 for a 90-second video
-            max_frames = desired_duration * fps  # 5400 frames for 90 seconds at 60fps
-            frame_skip = max(1, len(first_result["positions"]) // max_frames)
-            
-            # Account for the save_every parameter in actual frame calculations
-            total_sim_steps = first_result.get("n_steps", len(first_result["positions"]) * first_result.get("save_every", 1))
-            save_every = first_result.get("save_every", 1)
-            saved_frames = len(first_result["positions"])
-            actual_frames = saved_frames // frame_skip
-            duration = actual_frames / fps
-            
-            print(f"Simulation info: {total_sim_steps:,} total steps, save_every={save_every}")
-            print(f"Data available: {saved_frames:,} saved frames")
-            print(f"Animation settings: frame_skip={frame_skip}, will create {actual_frames:,} animation frames")
-            print(f"Expected video duration: {duration:.1f} seconds ({duration/60:.1f} minutes)")
-            
-            animation_path = visualizer.create_animated_trajectory(
-                first_result, 
-                sample_idx=0,
-                output_path=output_path / "0_trajectory_animation.mp4",
-                frames_per_second=fps,
-                trail_length=150,
-                frame_skip=frame_skip
-            )
-            print(f"Animation saved: {animation_path}")
-        except Exception as e:
-            print(f"Skipping trajectory animation: {e}")
-            print("Note: Animation requires matplotlib.animation and may need ffmpeg for MP4 or pillow for GIF")
-
-    if "velocities" in first_result:
-        try:
-            fig, axes = visualizer.plot_velocity_time_series(first_result, sample_idx=0)
-            _save_plot(fig, output_path, "0_velocity_time_series.png")
-        except ValueError as e:
-            print(f"Skipping velocity time series: {e}")
-
-    if "forces" in first_result:
-        try:
-            fig, axes = visualizer.plot_force_time_series(first_result, sample_idx=0)
-            _save_plot(fig, output_path, "0_force_time_series.png")
-        except ValueError as e:
-            print(f"Skipping force time series: {e}")
-
-    if "potential_energy" in first_result:
-        try:
-            fig, ax = visualizer.plot_energy_vs_time(first_result, sample_idx=0)
-            _save_plot(fig, output_path, "0_energy_vs_time.png")
-        except ValueError as e:
-            print(f"Skipping energy time series: {e}")
-
-    print(f"Batch plots saved to {output_path}")
+    Position distributions are aggregated across all simulations; per-particle
+    distributions and time-dependent plots use the first simulation.
+    """
+    _render_visualizations(
+        all_results[0],
+        output_dir,
+        save_animation,
+        animation_duration=90,
+        position_distribution_fn=lambda viz: viz.plot_batch_position_distributions(all_results),
+    )
 
 
 def demo_potential_features():

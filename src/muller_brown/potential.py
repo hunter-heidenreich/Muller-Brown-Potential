@@ -5,7 +5,6 @@ import torch.nn as nn
 from torch import Tensor
 
 
-@torch.jit.script
 def _calculate_potential(
     coordinates: Tensor,
     A: Tensor,
@@ -15,7 +14,12 @@ def _calculate_potential(
     x_centers: Tensor,
     y_centers: Tensor,
 ) -> Tensor:
-    """JIT-scripted function to compute the potential energy."""
+    """Compute the potential energy.
+
+    Left eager (not compiled) so second derivatives — e.g. the Hessian via
+    autograd — keep working; torch.compile does not support double-backward.
+    Energy is computed per-save, not per-step, so this is not the hot path.
+    """
     original_shape = coordinates.shape[:-1]
     coords = coordinates.view(-1, 2)
 
@@ -30,7 +34,7 @@ def _calculate_potential(
     return potential.view(original_shape)
 
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def _calculate_force(
     coordinates: Tensor,
     A: Tensor,
@@ -40,7 +44,7 @@ def _calculate_force(
     x_centers: Tensor,
     y_centers: Tensor,
 ) -> Tensor:
-    """JIT-scripted function to compute forces (negative gradient)."""
+    """Compute forces (negative gradient; compiled, shape-dynamic)."""
     original_shape = coordinates.shape[:-1]
     coords = coordinates.view(-1, 2)
 

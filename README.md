@@ -154,7 +154,7 @@ Simulations save all observables in HDF5 format:
 ```
 muller_brown/
 ├── src/muller_brown/        # Core package
-│   ├── potential.py         # Müller-Brown potential with JIT compilation
+│   ├── potential.py         # Müller-Brown potential (torch.compile force)
 │   ├── simulation.py        # Langevin dynamics simulator
 │   ├── visualization.py     # Comprehensive plotting suite
 │   ├── io.py               # HDF5 data I/O operations
@@ -178,7 +178,7 @@ muller_brown/
 
 ### `MuellerBrownPotential`
 
-- JIT-compiled PyTorch module for efficient evaluation
+- `torch.compile`-accelerated force evaluation
 - Automatic gradient computation for forces
 - Built-in critical point locations (3 minima, 2 saddle points)
 
@@ -199,7 +199,7 @@ muller_brown/
 
 The implementation is optimized for:
 
-- **JIT Compilation**: PyTorch JIT for fast potential and force evaluation
+- **Compiled forces**: `torch.compile` (shape-dynamic) for fast force evaluation
 - **GPU Support**: All tensors support CUDA acceleration
 - **Efficient Storage**: HDF5 with compression for large datasets
 - **Numerical Stability**: Double precision by default

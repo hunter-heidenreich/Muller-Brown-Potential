@@ -40,3 +40,7 @@ pythonpath = ["."]
 markers = [
     "statistical: seeded stochastic tests with tolerance-based assertions (slower)",
 ]
+filterwarnings = [
+    # torch.compile's mkldnn path emits this from torch internals, not our code
+    "ignore:.*torch.jit.script_method.*:DeprecationWarning",
+]

@@ -10,7 +10,20 @@ than a sampling one.
 import numpy as np
 import torch
 
-from src.muller_brown import MuellerBrownPotential, LangevinSimulator
+from src.muller_brown import MuellerBrownPotential, LangevinSimulator, set_random_seed
+
+
+def _run(seed: int) -> dict:
+    """Seed, then run a short stochastic trajectory from a fixed start."""
+    set_random_seed(seed)
+    potential = MuellerBrownPotential(dtype=torch.float64)
+    simulator = LangevinSimulator(potential, temperature=15.0, friction=1.0, dt=0.01)
+    return simulator.simulate(
+        np.array([[0.0, 0.0]]),
+        n_steps=2000,
+        save_every=10,
+        observables=["positions", "velocities"],
+    )
 
 
 def test_energy_conserved_without_friction():
@@ -49,3 +62,16 @@ def test_energy_conserved_without_friction():
     assert total_drift < 0.1 * energy.std(), (
         f"energy drifts ({total_drift:.2e}) relative to its oscillation ({energy.std():.2e})"
     )
+
+
+def test_same_seed_reproduces_trajectory():
+    """Reseeding before a run reproduces it bitwise (the O-step draws from the
+    global torch RNG, so determinism depends on the seed being reset)."""
+    first = _run(seed=123)
+    second = _run(seed=123)
+    assert np.array_equal(first["positions"], second["positions"])
+    assert np.array_equal(first["velocities"], second["velocities"])
+
+
+def test_different_seed_changes_trajectory():
+    assert not np.array_equal(_run(seed=1)["positions"], _run(seed=2)["positions"])
